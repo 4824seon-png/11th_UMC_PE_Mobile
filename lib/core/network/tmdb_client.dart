@@ -1,23 +1,3 @@
-// TMDB 전용 Dio Client(주소·Token 헤더·timeout·로그)를 만든다
-// ─────────────────────────────────────────────────────────────
-// [계층]   Core · 네트워크
-//
-// [기능]
-//   - createTmdbClient() : baseUrl·Authorization 헤더·timeout 10초가 설정된 Dio 반환
-//
-// [동작]
-//   BaseOptions로 모든 요청에 'Bearer <Token>' 헤더 자동 첨부
-//   kDebugMode일 때만 TmdbLoggingInterceptor 등록 (release에서는 로그 없음)
-//   timeout 초과·4xx·5xx는 DioException으로 호출한 쪽에 전달
-//
-// [의존성]
-//   사용   : dio, core/config/tmdb_config.dart, core/network/tmdb_logging_interceptor.dart
-//   사용처 : app/movie_log_app.dart (TmdbMovieService 생성 시 1번)
-//
-// [교체·수정 예정]
-//   - 없음. MovieLog 자체 API는 인증 방식이 달라 별도 Client를 만든다.
-// ─────────────────────────────────────────────────────────────
-
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 

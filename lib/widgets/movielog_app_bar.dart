@@ -1,22 +1,3 @@
-// 모든 화면이 재사용하는 공용 AppBar (Figma TopAppBar 높이 64)
-// ─────────────────────────────────────────────────────────────
-// [계층]   UI Layer · View (공통 위젯)
-//
-// [기능]
-//   - MovieLogAppBar(title, actions) : PreferredSizeWidget, 스타일은 AppBarTheme이 담당
-//
-// [동작]
-//   Scaffold.appBar에 넣으면 preferredSize(64)만큼 자리를 차지한다
-//
-// [의존성]
-//   사용   : flutter/material
-//   사용처 : screens/home/home_screen.dart, screens/movie_list/movie_list_screen.dart,
-//            screens/profile/profile_screen.dart
-//
-// [교체·수정 예정]
-//   - 없음.
-// ─────────────────────────────────────────────────────────────
-
 import 'package:flutter/material.dart';
 
 /// 모든 화면에서 재사용하는 공용 AppBar. 스타일은 AppBarTheme이 담당한다.

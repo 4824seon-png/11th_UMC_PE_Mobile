@@ -1,22 +1,3 @@
-// 영화 목록 Error 상태 화면 (안내 문구 + 다시 시도)
-// ─────────────────────────────────────────────────────────────
-// [계층]   UI Layer · View (영화 목록 전용 위젯)
-//
-// [기능]
-//   - MovieListError(onRetry, message?) : 오류 아이콘 + 문구 + '다시 시도' 버튼
-//
-// [동작]
-//   message가 없으면 기본 문구를 보여준다
-//   재시도 시 무엇을 할지는 부모가 onRetry로 전달한다 (ViewModel.retry)
-//
-// [의존성]
-//   사용   : flutter/material
-//   사용처 : screens/movie_list/movie_list_screen.dart
-//
-// [교체·수정 예정]
-//   - 없음.
-// ─────────────────────────────────────────────────────────────
-
 import 'package:flutter/material.dart';
 
 /// 영화 목록을 불러오지 못했을 때의 Error 상태 화면.

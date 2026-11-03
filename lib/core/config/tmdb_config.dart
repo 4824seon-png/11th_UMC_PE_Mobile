@@ -1,23 +1,3 @@
-// TMDB 설정값(.env의 Access Token)을 읽는 창구
-// ─────────────────────────────────────────────────────────────
-// [계층]   Core · 설정
-//
-// [기능]
-//   - TmdbConfig.accessToken    : .env의 TMDB_ACCESS_TOKEN (없으면 빈 문자열)
-//   - TmdbConfig.hasAccessToken : Token 설정 여부 (원문 없이 확인용)
-//
-// [동작]
-//   main()의 dotenv.load() 이후 getter가 호출될 때마다 dotenv.env에서 읽는다
-//   값이 비어 있으면 TMDB 요청이 401로 실패한다
-//
-// [의존성]
-//   사용   : flutter_dotenv
-//   사용처 : main.dart, core/network/tmdb_client.dart
-//
-// [교체·수정 예정]
-//   - 없음. 키 이름('TMDB_ACCESS_TOKEN')은 이 파일에만 둔다.
-// ─────────────────────────────────────────────────────────────
-
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// .env에 저장한 TMDB 설정을 읽는 곳.

@@ -1,27 +1,3 @@
-// 홈 탭 화면: TMDB 인기 1위 히어로 카드와 인기 영화 5개 가로 목록
-// ─────────────────────────────────────────────────────────────
-// [계층]   UI Layer · View
-//
-// [기능]
-//   - HomeScreen       : AppBar + 인사 문구 + Consumer(상태별 영역)
-//   - _PopularContent  : Success — 히어로 + '인기 영화' 헤더 + 가로 목록
-//   - _HomeHeroCard    : 인기 1위 포스터·제목·'연도 · ★ 10점'·상세보기
-//   - _HomeLoading / _HomeMessage : Loading / Error(다시 시도)·Empty
-//
-// [동작]
-//   notifyListeners → Consumer builder만 다시 실행 → switch(status)로 4가지 중 하나 표시
-//   인사 문구·AppBar는 Consumer 밖이라 다시 그리지 않는다
-//   다시 시도 → context.read<MovieHomeViewModel>().loadPopular()
-//
-// [의존성]
-//   사용   : provider, go_router, view_models/movie_home_view_model.dart, data/models/tmdb_movie_dto.dart,
-//            widgets/movielog_app_bar.dart, widgets/tmdb_movie_card.dart, widgets/tmdb_poster_image.dart
-//   사용처 : router/app_router.dart (/home)
-//
-// [교체·수정 예정]
-//   - 없음. 상세보기·카드 탭은 TMDB id(URL)와 영화(extra)를 상세 화면에 넘긴다.
-// ─────────────────────────────────────────────────────────────
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -55,8 +31,6 @@ class HomeScreen extends StatelessWidget {
               child: Text('오늘은 어떤\n영화를 볼까요?', style: textTheme.headlineSmall),
             ),
             const SizedBox(height: 24),
-            // [5주차] 상태에 따라 바뀌는 영역만 Consumer로 감싼다.
-            // notifyListeners()가 호출되면 이 builder만 다시 실행된다.
             Consumer<MovieHomeViewModel>(
               builder: (context, viewModel, child) {
                 return switch (viewModel.status) {
@@ -97,7 +71,6 @@ class _PopularContent extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          // [결정] 히어로 영화: 인기 1위 (Popular 결과의 첫 번째)
           child: _HomeHeroCard(movie: movies.first),
         ),
         const SizedBox(height: 32),
@@ -141,7 +114,6 @@ class _HomeHeroCard extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // [5주차] Image.asset → TMDB 포스터 (null·로드 실패 시 placeholder)
             TmdbPosterImage(posterPath: movie.posterPath),
             const DecoratedBox(
               decoration: BoxDecoration(
@@ -198,7 +170,6 @@ class _HomeHeroCard extends StatelessWidget {
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton.icon(
-                      // [미션 8] URL에는 TMDB id, extra에는 화면 표시용 영화 데이터.
                       onPressed: () =>
                           context.push('/movies/${movie.id}', extra: movie),
                       icon: const Icon(Icons.info),
