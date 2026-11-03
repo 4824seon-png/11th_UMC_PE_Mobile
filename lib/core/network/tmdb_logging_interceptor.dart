@@ -1,24 +1,3 @@
-// TMDB 요청·응답·오류를 콘솔에 남기는 Dio Interceptor (Token 마스킹)
-// ─────────────────────────────────────────────────────────────
-// [계층]   Core · 네트워크
-//
-// [기능]
-//   - onRequest  : Method·URL·Header(Authorization → 'Bearer ***')·Query 출력
-//   - onResponse : Status Code·응답 Body(앞 800자) 출력
-//   - onError    : 실패 URL·오류 종류·Status·TMDB 오류 Body 출력
-//
-// [동작]
-//   모든 TMDB 요청이 이 검문소를 지난다 → 로그 형식이 하나로 통일
-//   각 메서드 끝 handler.next(...)가 요청/응답을 다음 단계로 넘긴다 (빠뜨리면 멈춤)
-//
-// [의존성]
-//   사용   : dio, flutter/foundation (debugPrint)
-//   사용처 : core/network/tmdb_client.dart (kDebugMode에서만 등록)
-//
-// [교체·수정 예정]
-//   - 없음. 트러블슈팅 기록의 '호출 API / Query / status / 응답 모양'을 이 로그에서 옮긴다.
-// ─────────────────────────────────────────────────────────────
-
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 

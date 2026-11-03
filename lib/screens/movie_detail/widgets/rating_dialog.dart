@@ -1,23 +1,3 @@
-// 평점 입력 Dialog: 별점을 고르고 확인하면 값을 반환한다 (TMDB movieId 보유)
-// ─────────────────────────────────────────────────────────────
-// [계층]   UI Layer · View (상세 화면 전용 위젯)
-//
-// [기능]
-//   - RatingDialog(movieId) : MovieRatingInput + 확인 버튼 (0점이면 비활성)
-//
-// [동작]
-//   확인 → [평점] movieId·score 로그 → Navigator.pop(context, rating)
-//   → showDialog<double>의 반환값이 된다
-//   [미션 8] movieId = TmdbMovieDto.id. 이후 평점 API(CreateRatingRequest.movieId)에 그대로 쓴다
-//
-// [의존성]
-//   사용   : screens/movie_detail/widgets/movie_rating_input.dart
-//   사용처 : screens/movie_detail/movie_detail_screen.dart
-//
-// [교체·수정 예정]
-//   - 이후 주차: 확인 시 MovieLog 자체 평점 API로 movieId·score 전송
-// ─────────────────────────────────────────────────────────────
-
 import 'package:flutter/material.dart';
 
 import 'movie_rating_input.dart';
@@ -60,13 +40,9 @@ class _RatingDialogState extends State<RatingDialog> {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              // [결정] 0점일 때 확인 버튼 비활성화
-              // - onPressed가 null이면 버튼이 비활성화된다. 별을 누르면 setState → rebuild로 다시 계산되어 활성화.
               onPressed: rating == 0
                   ? null
                   : () {
-                      // [미션 8] 인증용: 평점이 어떤 TMDB 영화 id로 기록되는지 남긴다.
-                      // (State 안에서는 생성자 값을 widget.으로 읽는다)
                       debugPrint(
                         '[평점] movieId=${widget.movieId}, score=$rating',
                       );

@@ -1,32 +1,3 @@
-// 영화 탭의 상태(장르 목록·선택 장르·최대 30개 영화·로드 상태)와 로직을 담당하는 ViewModel
-// ─────────────────────────────────────────────────────────────
-// [계층]   UI Layer · ViewModel (영화 탭 전용)
-//
-// [기능]
-//   - loadInitial()       : 장르 목록 → 저장된 장르 복원 → Discover 최대 30개
-//   - selectGenre(id)     : 장르 변경 → with_genres로 page 1부터 다시 30개 (null = 전체)
-//   - retry()             : Error에서 다시 시도 (장르 목록이 없으면 처음부터, 있으면 현재 장르로)
-//   - isLoading           : 화면(Chip 비활성)과 VM(변경 거부)이 함께 쓰는 로드 중 판단
-//   - genres, genreNames, selectedGenreId, movies, status, message : 화면이 읽는 상태
-//
-// [동작]
-//   요청 시작: ++_requestVersion → loading → notify
-//   30개 수집: page 1부터 discoverMovies → Map<id, 영화>로 중복 제거
-//              → 30개 또는 마지막 페이지(totalPages)에서 종료
-//   응답 도착: 버전이 최신이 아니거나 dispose됐으면 버림 → success|empty|error → notify
-//   [미션 7] 로드 중 selectGenre 호출은 무시 (Chip도 onSelected: null로 비활성)
-//
-// [의존성]
-//   사용   : dio (DioException), flutter/foundation (ChangeNotifier),
-//            data/services/tmdb_movie_service.dart, data/storage/genre_preference.dart,
-//            data/models/tmdb_movie_dto.dart, data/models/tmdb_genre_dto.dart
-//   사용처 : router/app_router.dart (/movies에서 생성),
-//            screens/movie_list/movie_list_screen.dart (Consumer)
-//
-// [교체·수정 예정]
-//   - Challenge: Pull to Refresh(목록 유지), 장르 다중 선택(List<int>, '|' 연결), 재시도 Dialog
-// ─────────────────────────────────────────────────────────────
-
 import 'dart:async';
 
 import 'package:dio/dio.dart';
@@ -80,7 +51,6 @@ class MovieListViewModel extends ChangeNotifier {
     final version = _startLoading();
 
     try {
-      // [미션 1] Genre API로 Chip 목록을 만든다.
       final fetchedGenres = await _service.fetchGenres();
       final restoredGenreId = await _restoreGenreId(fetchedGenres);
       if (_isStale(version)) return;
@@ -107,9 +77,7 @@ class MovieListViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// [미션 5·6] 장르 Chip 선택. null = 전체.
   Future<void> selectGenre(int? genreId) async {
-    // [미션 7] 요청 중에는 장르를 바꾸지 않는다. (Chip도 비활성이지만 여기서 한 번 더 막는다)
     if (isLoading) return;
     // 이미 선택된 장르를 다시 누르면 다시 요청하지 않는다.
     if (genreId == selectedGenreId) return;
@@ -145,8 +113,6 @@ class MovieListViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// [미션 2·3] Discover를 page 1부터 요청해 TMDB id 기준 중복 없이 최대 30개를 모은다.
-  /// 한 페이지 개수(20)를 가정하지 않고 "30개가 차거나 마지막 페이지일 때까지" 반복한다.
   Future<List<TmdbMovieDto>> _fetchUpToThirtyMovies({int? genreId}) async {
     final byId =
         <int, TmdbMovieDto>{}; // key = TMDB id → 같은 영화는 하나만 남는다 (순서 유지)
@@ -189,7 +155,6 @@ class MovieListViewModel extends ChangeNotifier {
   /// 이 응답을 버려야 하는지: 화면을 떠났거나, 더 새로운 요청이 시작됐다.
   bool _isStale(int version) => _disposed || version != _requestVersion;
 
-  /// [미션 4] 결과가 비면 Empty, 있으면 Success. (장르 결과가 30개보다 적어도 오류가 아니다)
   void _applyMovies(List<TmdbMovieDto> result) {
     movies = result;
     status = result.isEmpty

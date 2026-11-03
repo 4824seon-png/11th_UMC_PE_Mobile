@@ -1,27 +1,3 @@
-// 영화 상세 화면: TMDB 포스터·정보·줄거리, 즐겨찾기·평점 Dialog·공유 BottomSheet
-// ─────────────────────────────────────────────────────────────
-// [계층]   UI Layer · View
-//
-// [기능]
-//   - MovieDetailScreen(movieId, movie?) : 목록·홈에서 extra로 받은 TmdbMovieDto를 표시
-//   - 즐겨찾기 토글 + Snackbar, 평점 Dialog(showDialog<double>), 공유 BottomSheet
-//
-// [동작]
-//   URL의 movieId가 기준. extra의 movie가 없거나(딥링크·재시작) id가 다르면 안내 화면
-//   평균 평점: TMDB 10점 → 별 5개로 환산 + '8.5 / 10' / 내 평점: 5점 그대로 '4.5 / 5'
-//   줄거리가 빈 문자열이면 '줄거리 정보가 없어요.'
-//   [미션 8] 평점 남기기 → RatingDialog(movieId: movie.id)
-//
-// [의존성]
-//   사용   : flutter_rating_bar, data/models/tmdb_movie_dto.dart,
-//            widgets/tmdb_poster_image.dart, screens/movie_detail/widgets/rating_dialog.dart
-//   사용처 : router/app_router.dart (/movies/:movieId, extra)
-//
-// [교체·수정 예정]
-//   - 이후: TMDB 상세 API(/movie/{id})로 id만으로도 표시(딥링크·러닝타임·장르 이름)
-//   - 이후: 즐겨찾기·평점을 MovieLog 자체 API에 저장
-// ─────────────────────────────────────────────────────────────
-
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 
@@ -40,8 +16,6 @@ class MovieDetailScreen extends StatefulWidget {
   /// Path Parameter에서 읽은 TMDB 영화 id. 숫자가 아니면 null.
   final int? movieId;
 
-  /// [5주차] 카드·히어로에서 push할 때 extra로 함께 넘긴 영화.
-  /// URL에 남지 않으므로 딥링크·앱 재시작으로 열리면 null이다.
   final TmdbMovieDto? movie;
 
   @override
@@ -69,7 +43,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   }
 
   // ── 평점 남기기 (Dialog) ──
-  // [미션 8] 어떤 영화의 평점인지 TMDB id를 Dialog에 전달한다.
   Future<void> _openRatingDialog(int movieId) async {
     // 바깥 영역 탭·뒤로가기로 닫으면 값 없이 닫혀 null이 온다 → 반환 타입은 double?.
     final rating = await showDialog<double>(
@@ -137,7 +110,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
             // 스크롤 안에서는 높이가 무한하므로 AspectRatio로 이미지 높이를 정한다.
             AspectRatio(
               aspectRatio: 3 / 4,
-              // [5주차] Image.asset → TMDB 포스터 (null·로드 실패 시 placeholder)
               child: TmdbPosterImage(posterPath: movie.posterPath),
             ),
             Padding(
@@ -211,10 +183,6 @@ class _MovieInfo extends StatelessWidget {
 }
 
 /// 읽기 전용 별점 한 줄: 라벨 + 별 5개 + '값 / 만점'.
-///
-/// [결정] 만점이 달라도 별은 항상 5개로 그리고, 숫자에 단위를 적는다.
-/// - 평균(10점) 8.5 → 별 4.25개 + '8.5 / 10', 내 평점(5점) 4.5 → 별 4.5개 + '4.5 / 5'
-/// - 대안: 평균만 별 10개 → 두 줄의 별 개수가 달라 비교가 어려워 제외.
 class _ReadOnlyRating extends StatelessWidget {
   const _ReadOnlyRating({
     required this.label,

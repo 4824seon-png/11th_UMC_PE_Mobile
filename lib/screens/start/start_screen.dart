@@ -1,21 +1,3 @@
-// 시작 화면: 로고·소개 문구와 '시작하기' 버튼
-// ─────────────────────────────────────────────────────────────
-// [계층]   UI Layer · View (1주차)
-//
-// [기능]
-//   - StartScreen : 로고 SVG, 소개 문구, 시작하기 → /register
-//
-// [동작]
-//   시작하기 → context.go('/register') (뒤로가기로 돌아오지 않도록 go 사용)
-//
-// [의존성]
-//   사용   : flutter_svg, go_router
-//   사용처 : router/app_router.dart (/start, 앱 첫 화면)
-//
-// [교체·수정 예정]
-//   - 없음.
-// ─────────────────────────────────────────────────────────────
-
 import 'package:flutter/material.dart'; // Scaffold, Column, ElevatedButton ...
 import 'package:flutter_svg/flutter_svg.dart'; // SvgPicture
 import 'package:go_router/go_router.dart'; // context.go
@@ -61,11 +43,6 @@ class StartScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  // [결정] Start → Register: go
-                  // - 요구사항: 회원가입 화면에서 뒤로가기(→ Start)가 동작하면 안 된다.
-                  // - /start와 /register는 둘 다 최상위 route라서 go하면 스택이 [Register]로 재구성된다.
-                  // - 대안 pushReplacement도 결과 스택은 같지만, "현재 위치를 바꾼다"는 의도는 go가 더 명확하다.
-                  // - push는 스택이 [Start, Register]가 되어 뒤로가기가 가능하므로 제외.
                   onPressed: () => context.go('/register'),
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(0, 48),

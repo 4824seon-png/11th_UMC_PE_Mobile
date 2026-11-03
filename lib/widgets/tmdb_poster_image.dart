@@ -1,24 +1,3 @@
-// TMDB poster_path로 포스터를 그리고, 없거나 실패하면 placeholder를 보여준다
-// ─────────────────────────────────────────────────────────────
-// [계층]   UI Layer · View (공통 위젯)
-//
-// [기능]
-//   - TmdbPosterImage(posterPath, width?, height?, fit) : 크기를 생략하면 부모 영역을 채움
-//
-// [동작]
-//   URL = https://image.tmdb.org/t/p + /w500 + posterPath
-//   posterPath null·빈 문자열 → 요청 없이 placeholder
-//   로드 실패(네트워크·404) → errorBuilder가 placeholder로 대체
-//
-// [의존성]
-//   사용   : flutter/material
-//   사용처 : widgets/tmdb_movie_card.dart, screens/home/home_screen.dart,
-//            screens/movie_detail/movie_detail_screen.dart
-//
-// [교체·수정 예정]
-//   - 없음.
-// ─────────────────────────────────────────────────────────────
-
 import 'package:flutter/material.dart';
 
 /// TMDB의 poster_path로 포스터 이미지를 그린다.

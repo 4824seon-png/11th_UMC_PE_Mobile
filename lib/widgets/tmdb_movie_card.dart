@@ -1,26 +1,3 @@
-// TMDB 영화 카드: 포스터·★10점 평점·제목·연도/장르, 탭하면 TMDB id로 상세 이동
-// ─────────────────────────────────────────────────────────────
-// [계층]   UI Layer · View (공통 위젯)
-//
-// [기능]
-//   - TmdbMovieCard(movie, genreName?) : MovieCard와 같은 Figma 레이아웃
-//   - TmdbMovieCard.infoHeight(60) : Grid 칸 높이 계산용
-//
-// [동작]
-//   포스터는 TmdbPosterImage가 Positioned.fill 영역을 채운다
-//   부제 = 개봉 연도 · 장르 이름 (없는 값은 빼고 ' · '로 연결, 둘 다 없으면 빈 줄)
-//   탭 → context.push('/movies/${id}', extra: movie)
-//        URL의 id가 기준, extra는 상세 화면이 바로 그리기 위한 영화 데이터
-//
-// [의존성]
-//   사용   : go_router, data/models/tmdb_movie_dto.dart, widgets/tmdb_poster_image.dart
-//   사용처 : screens/home/home_screen.dart (genreName 없음 → 연도만),
-//            screens/movie_list/widgets/movie_grid.dart (genreName 전달)
-//
-// [교체·수정 예정]
-//   - 없음.
-// ─────────────────────────────────────────────────────────────
-
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -61,7 +38,6 @@ class TmdbMovieCard extends StatelessWidget {
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      // [미션 8] URL에는 TMDB id(이후 평점 API의 movieId), extra에는 화면 표시용 영화 데이터.
       onTap: () => context.push('/movies/${movie.id}', extra: movie),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

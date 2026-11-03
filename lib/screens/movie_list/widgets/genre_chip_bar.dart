@@ -1,25 +1,3 @@
-// 가로 스크롤 장르 Chip 바: '전체' + TMDB 장르 (단일 선택, 로드 중 비활성)
-// ─────────────────────────────────────────────────────────────
-// [계층]   UI Layer · View (영화 목록 전용 위젯)
-//
-// [기능]
-//   - GenreChipBar(genres, selectedGenreId, enabled, onSelected)
-//     맨 앞 '전체'(id null) + Genre API 장르들, Figma W3-02 크기·색
-//
-// [동작]
-//   index 0 = '전체'(null), index 1~ = genres[index - 1]
-//   탭 → onSelected(장르 id 또는 null) → 부모가 ViewModel.selectGenre 호출
-//   [미션 7] enabled == false(로드 중)이면 onSelected: null → Chip 비활성
-//            비활성이어도 선택 색은 유지해 어떤 장르를 불러오는 중인지 보여준다
-//
-// [의존성]
-//   사용   : data/models/tmdb_genre_dto.dart
-//   사용처 : screens/movie_list/movie_list_screen.dart
-//
-// [교체·수정 예정]
-//   - Challenge: 장르 다중 선택은 BottomSheet로 구현 (이 바는 단일 선택 유지)
-// ─────────────────────────────────────────────────────────────
-
 import 'package:flutter/material.dart';
 
 import '../../../data/models/tmdb_genre_dto.dart';
@@ -63,20 +41,15 @@ class GenreChipBar extends StatelessWidget {
         itemCount: genres.length + 1, // 맨 앞 '전체' 1개 + TMDB 장르
         separatorBuilder: (context, index) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          // [미션 6] '전체'는 id가 없다(null) → Service가 with_genres를 보내지 않는다.
           final genreId = index == 0 ? null : genres[index - 1].id;
           final label = index == 0 ? _allGenreLabel : genres[index - 1].name;
           final isSelected = genreId == selectedGenreId;
 
-          // [결정] Chip 종류: ChoiceChip (여러 개 중 하나만 선택)
           return Center(
             child: ChoiceChip(
               label: Text(label),
               selected: isSelected,
-              // [미션 7] 로드 중에는 null → Chip이 눌리지 않는다(접근성에도 '비활성'으로 전달).
               onSelected: enabled ? (_) => onSelected(genreId) : null,
-              // [결정] 비활성 모양: 기존 색 유지 (아래 스피너로 로딩을 보여준다)
-              // - 대안: 기본 비활성 색(회색) → 선택 장르가 안 보이고 흰 글자가 묻혀 제외.
               disabledColor: isSelected
                   ? colors.primary
                   : colors.surfaceContainerHighest,

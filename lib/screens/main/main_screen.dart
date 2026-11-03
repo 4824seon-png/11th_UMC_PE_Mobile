@@ -1,21 +1,3 @@
-// 홈·영화·마이 탭이 공유하는 하단 NavigationBar 레이아웃
-// ─────────────────────────────────────────────────────────────
-// [계층]   UI Layer · View (ShellRoute 공통 레이아웃)
-//
-// [기능]
-//   - MainScreen(currentIndex, child) : body에 현재 탭 화면, 하단에 NavigationBar
-//
-// [동작]
-//   탭 선택 → context.go('/home'|'/movies'|'/my') → 라우터가 URL로 currentIndex 계산
-//
-// [의존성]
-//   사용   : go_router
-//   사용처 : router/app_router.dart (ShellRoute builder)
-//
-// [교체·수정 예정]
-//   - 없음.
-// ─────────────────────────────────────────────────────────────
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 

@@ -1,26 +1,3 @@
-// 홈 화면의 상태(인기 영화 5개, 로드 상태)와 로직을 담당하는 ViewModel
-// ─────────────────────────────────────────────────────────────
-// [계층]   UI Layer · ViewModel (홈 화면 전용)
-//
-// [기능]
-//   - MovieHomeLoadStatus : idle / loading / success / empty / error
-//   - loadPopular()       : Popular 1페이지 요청 → 앞 5개(popularCount) 추출 → 상태 갱신
-//   - popularMovies, status, message : 화면이 읽는 상태
-//
-// [동작]
-//   loading → notify → fetchPopular → take(5) → success|empty / error → notify
-//   DioException 외 오류(DTO 변환 TypeError 등)도 error로 처리 → Loading에 멈추지 않음
-//   dispose 후 도착한 응답은 _disposed로 무시 (dispose 후 notify 금지)
-//
-// [의존성]
-//   사용   : dio (DioException), flutter/foundation (ChangeNotifier),
-//            data/services/tmdb_movie_service.dart, data/models/tmdb_movie_dto.dart
-//   사용처 : router/app_router.dart (/home에서 생성), screens/home/home_screen.dart (Consumer)
-//
-// [교체·수정 예정]
-//   - 없음. MovieListViewModel도 같은 구조(status·_disposed·예외 처리)를 따른다.
-// ─────────────────────────────────────────────────────────────
-
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
