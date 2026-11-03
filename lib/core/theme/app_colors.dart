@@ -1,21 +1,3 @@
-// Figma 디자인 시스템의 원본 색상값 모음
-// ─────────────────────────────────────────────────────────────
-// [계층]   Core · 테마
-//
-// [기능]
-//   - AppColors.* : primary, surface, onSurfaceVariant 등 Figma 색상 상수
-//
-// [동작]
-//   화면에서는 직접 쓰지 않고 AppTheme의 ColorScheme을 거쳐 사용한다
-//
-// [의존성]
-//   사용   : flutter/material (Color)
-//   사용처 : core/theme/app_theme.dart
-//
-// [교체·수정 예정]
-//   - 없음.
-// ─────────────────────────────────────────────────────────────
-
 import 'package:flutter/material.dart';
 
 /// Figma 디자인 시스템의 원본 색상값 모음.
@@ -38,5 +20,16 @@ class AppColors {
   static const Color onInverseSurface = Color(0xFFF5EFF7);
   static const Color outlineVariant = Color(0xFFE3E0D8); // 통계 카드 테두리
   static const Color secondaryContainer = Color(0xFFE9DDFF); // 장르 Chip 배경
-  static const Color inputBorder = Color(0xFFCAC4D0); // 입력창 기본 테두리
+  static const Color inputBorder = Color(0xFFD9D3E1); // 입력창 기본 테두리
+  static const Color inputFill = Color(0xFFFEFCF9); // 입력창 배경
+  static const Color inputHint = Color(0xFF8A8391); // 힌트 글자
+  static const Color labelText = Color(0xFF25232A); // 라벨·본문 글자
+  static const Color buttonDisabled = Color(0xFFD3C6E2); // 비활성 버튼
+  static const Color checkAvailable = Color(0xFF2E7D32); // 사용 가능 문구
+  static const Color checkInProgress = Color(0xFF1565C0); // 확인 중 문구
+  static const Color gray = Color(0xFF79747E); // 통신 중 버튼 배경
+  static const Color cardBorder = Color(0xFFD9D3E1); // 평점 카드 테두리
+  static const Color posterPlaceholder = Color(0xFFD8D2E0); // 포스터 대체 배경
+  static const Color commentText = Color(0xFF655F6C); // 후기·등록일 글자
+  static const Color entryBorder = Color(0xFFD6C9E8); // 마이페이지 진입 행 테두리
 }

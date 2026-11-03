@@ -1,23 +1,5 @@
-// 앱 전체 ThemeData(색·글꼴·위젯 기본 스타일)를 정의한다
-// ─────────────────────────────────────────────────────────────
-// [계층]   Core · 테마
-//
-// [기능]
-//   - AppTheme.light : ColorScheme·Manrope 글꼴·AppBar·입력창 등 기본 스타일
-//   - AppTheme.radius : 기본 모서리 반경(8)
-//
-// [동작]
-//   AppColors 값을 ColorScheme에 매핑 → 화면은 Theme.of(context)로 꺼내 쓴다
-//
-// [의존성]
-//   사용   : flutter/material, core/theme/app_colors.dart
-//   사용처 : app/movie_log_app.dart (MaterialApp.router의 theme)
-//
-// [교체·수정 예정]
-//   - 없음.
-// ─────────────────────────────────────────────────────────────
-
 import 'package:flutter/material.dart';
+
 import 'app_colors.dart';
 
 class AppTheme {
@@ -26,22 +8,21 @@ class AppTheme {
   /// 8px 간격 단위와 기본 모서리 반경 (디자인 시스템 기준)
   static const double radius = 8;
 
-  static final ColorScheme _colorScheme = ColorScheme.fromSeed(
-    seedColor: AppColors.primary,
-  ).copyWith(
-    primary: AppColors.primary,
-    onPrimary: AppColors.onPrimary,
-    surface: AppColors.surface,
-    onSurface: AppColors.onSurface,
-    onSurfaceVariant: AppColors.onSurfaceVariant,
-    surfaceContainer: AppColors.surfaceContainer,
-    surfaceContainerHighest: AppColors.surfaceContainerHighest,
-    inverseSurface: AppColors.inverseSurface,
-    onInverseSurface: AppColors.onInverseSurface,
-    outlineVariant: AppColors.outlineVariant,
-    secondaryContainer: AppColors.secondaryContainer,
-    onSecondaryContainer: AppColors.primary,
-  );
+  static final ColorScheme _colorScheme =
+      ColorScheme.fromSeed(seedColor: AppColors.primary).copyWith(
+        primary: AppColors.primary,
+        onPrimary: AppColors.onPrimary,
+        surface: AppColors.surface,
+        onSurface: AppColors.onSurface,
+        onSurfaceVariant: AppColors.onSurfaceVariant,
+        surfaceContainer: AppColors.surfaceContainer,
+        surfaceContainerHighest: AppColors.surfaceContainerHighest,
+        inverseSurface: AppColors.inverseSurface,
+        onInverseSurface: AppColors.onInverseSurface,
+        outlineVariant: AppColors.outlineVariant,
+        secondaryContainer: AppColors.secondaryContainer,
+        onSecondaryContainer: AppColors.primary,
+      );
 
   static final ThemeData light = ThemeData(
     useMaterial3: true,
@@ -95,8 +76,14 @@ class AppTheme {
     // TextFormField 공통 스타일 (2주차 7번: 상태별 테두리)
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AppColors.surfaceContainer,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      fillColor: AppColors.inputFill,
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 11.5,
+      ),
+      hintStyle: const TextStyle(fontSize: 14, color: AppColors.inputHint),
+      errorStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
       enabledBorder: _inputBorder(AppColors.inputBorder), // 기본 상태
       focusedBorder: _inputBorder(AppColors.primary, width: 2), // 입력 중
       errorBorder: _inputBorder(_colorScheme.error), // 검증 실패
