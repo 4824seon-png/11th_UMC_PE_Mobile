@@ -1,29 +1,4 @@
-// 앱의 모든 경로(URL)와 화면을 연결하고, 화면별 ViewModel을 생성하는 라우터
-// ─────────────────────────────────────────────────────────────
-// [계층]   UI Layer · 라우팅
-//
-// [기능]
-//   - /start, /register                : 탭 없는 화면
-//   - ShellRoute(/home, /movies, /my)  : MainScreen(하단 탭) 안에 표시
-//   - /movies/:movieId                 : 상세 화면 (URL = TMDB id, extra = TmdbMovieDto)
-//   - indexFromLocation(path)          : URL → 하단 탭 번호
-//
-// [동작]
-//   /home   → ChangeNotifierProvider(MovieHomeViewModel..loadPopular())
-//   /movies → ChangeNotifierProvider(MovieListViewModel(service, GenrePreference())..loadInitial())
-//   create는 화면 수명 동안 1번, 화면을 떠나면 ViewModel dispose 자동 호출
-//   /movies/:movieId → state.extra가 TmdbMovieDto일 때만 상세 화면에 전달
-//
-// [의존성]
-//   사용   : go_router, provider, screens/*, view_models/*,
-//            data/services/tmdb_movie_service.dart, data/storage/genre_preference.dart,
-//            data/models/tmdb_movie_dto.dart
-//   사용처 : app/movie_log_app.dart (routerConfig)
-//
-// [교체·수정 예정]
-//   - 이후: 상세 화면을 TMDB 상세 API로 바꾸면 extra 없이 id만 전달
-// ─────────────────────────────────────────────────────────────
-
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -39,23 +14,34 @@ import '../screens/register/register_screen.dart';
 import '../screens/start/start_screen.dart';
 import '../view_models/movie_home_view_model.dart';
 import '../view_models/movie_list_view_model.dart';
+import '../data/services/member_check_service.dart';
+import '../view_models/sign_up_view_model.dart';
+import '../data/services/rating_api_service.dart';
+import '../screens/my_ratings/my_ratings_screen.dart';
+import '../view_models/my_ratings_view_model.dart';
 
 /// 앱의 모든 경로(URL)와 화면의 연결을 한 곳에서 관리한다.
 class AppRouter {
   // private 생성자: 인스턴스를 만들지 않고 AppRouter.router처럼 사용하는 네임스페이스 클래스.
   AppRouter._();
+  static final rootNavigatorKey = GlobalKey<NavigatorState>();
 
   // static final: 처음 접근할 때 한 번만 생성된다.
   // build 안에서 만들면 rebuild마다 새 라우터가 생겨 현재 위치가 초기화된다.
   static final router = GoRouter(
     // 앱 첫 화면. MaterialApp.home 대신 여기서 결정한다.
     initialLocation: '/start',
+    navigatorKey: rootNavigatorKey,
     routes: [
       // ── ShellRoute 밖: NavigationBar가 없는 화면 ──
       GoRoute(path: '/start', builder: (context, state) => const StartScreen()),
       GoRoute(
         path: '/register',
-        builder: (context, state) => const RegisterScreen(),
+        builder: (context, state) => ChangeNotifierProvider(
+          create: (context) =>
+              SignUpViewModel(context.read<MemberCheckService>()),
+          child: const RegisterScreen(),
+        ),
       ),
 
       // ── ShellRoute: 하위 route들에 MainScreen(NavigationBar)을 공통으로 씌운다 ──
@@ -71,9 +57,6 @@ class AppRouter {
         routes: [
           GoRoute(
             path: '/home',
-            // [5주차] 홈 화면 전용 ViewModel을 이 Route에서 만든다.
-            // create는 화면에 처음 들어올 때 한 번만 실행되고(rebuild마다 X),
-            // 화면이 사라지면 ChangeNotifierProvider가 dispose를 호출한다.
             builder: (context, state) => ChangeNotifierProvider(
               // 캐스케이드(..): 생성 직후 첫 요청을 보내고, create의 반환값은 ViewModel 자신
               create: (context) =>
@@ -84,8 +67,6 @@ class AppRouter {
           ),
           GoRoute(
             path: '/movies',
-            // [5주차 Required] 영화 탭 전용 ViewModel.
-            // GenrePreference는 영화 탭에서만 쓰므로 여기서 만들어 생성자로 주입한다.
             builder: (context, state) => ChangeNotifierProvider(
               create: (context) => MovieListViewModel(
                 context.read<TmdbMovieService>(),
@@ -97,6 +78,21 @@ class AppRouter {
           GoRoute(
             path: '/my',
             builder: (context, state) => const ProfileScreen(),
+            routes: [
+              GoRoute(
+                path: 'ratings',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) =>
+                    ChangeNotifierProvider<MyRatingsViewModel>(
+                      create: (context) => MyRatingsViewModel(
+                        context.read<RatingApiService>(),
+                        context.read<TmdbMovieService>(),
+                        sampleMemberId,
+                      )..load(),
+                      child: const MyRatingsScreen(),
+                    ),
+              ),
+            ],
           ),
         ],
       ),
@@ -108,8 +104,6 @@ class AppRouter {
         // ':movieId' = Path Parameter. 아래 pathParameters의 key와 철자가 같아야 한다.
         path: '/movies/:movieId',
         builder: (context, state) {
-          // [미션 8] extra = push할 때 함께 넘긴 영화. URL에 남지 않아 딥링크에서는 null.
-          // as로 강제 변환하지 않고 is로 확인한다 → 다른 타입이 와도 앱이 죽지 않는다.
           final extra = state.extra;
           return MovieDetailScreen(
             // URL 값은 항상 String → int로 변환한다. 숫자가 아니면 null.
