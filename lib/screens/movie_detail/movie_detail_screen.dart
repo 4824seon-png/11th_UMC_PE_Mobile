@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
+import 'package:provider/provider.dart';
 
 import '../../data/models/tmdb_movie_dto.dart';
+import '../../view_models/movie_detail_view_model.dart';
+import '../../view_models/submit_status.dart';
 import '../../widgets/tmdb_poster_image.dart';
 import 'widgets/rating_dialog.dart';
 
+// 영화 상세 화면. 「평점 남기기」를 누르면 Dialog를 열고 결과를 화면에 반영
+
 /// 영화 상세 화면. 경로 /movies/:movieId
 /// ShellRoute 밖에 있어서 NavigationBar가 표시되지 않는다.
-///
+
 /// 즐겨찾기 여부와 내가 남긴 평점을 화면 안에서 기억해야 하므로 StatefulWidget으로 만든다.
 /// (평점·즐겨찾기는 화면 내부 상태로만 처리 → 상세를 나갔다 오면 초기화되는 것이 정상)
 class MovieDetailScreen extends StatefulWidget {
-  const MovieDetailScreen({super.key, required this.movieId, this.movie});
-
-  /// Path Parameter에서 읽은 TMDB 영화 id. 숫자가 아니면 null.
-  final int? movieId;
-
-  final TmdbMovieDto? movie;
+  // 영화 데이터와 회원 번호는 MovieDetailViewModel(Loader가 제공)에서 읽는다.
+  const MovieDetailScreen({super.key});
 
   @override
   State<MovieDetailScreen> createState() => _MovieDetailScreenState();
@@ -42,19 +43,43 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     _showSnackBar(_isFavorite ? '즐겨찾기에 추가했어요.' : '즐겨찾기에서 삭제했어요.');
   }
 
-  // ── 평점 남기기 (Dialog) ──
-  Future<void> _openRatingDialog(int movieId) async {
-    // 바깥 영역 탭·뒤로가기로 닫으면 값 없이 닫혀 null이 온다 → 반환 타입은 double?.
-    final rating = await showDialog<double>(
+  // ── 평점 남기기 (Dialog → 서버 등록) ──
+  Future<void> _openRatingDialog() async {
+    // ① 이 화면의 ViewModel (Dialog를 열기 전에 꺼내 둔다)
+    final viewModel = context.read<MovieDetailViewModel>();
+    int? savedScore;
+    String? failedMessage; // 이번 Dialog에서 마지막으로 실패한 이유 (성공하면 지움)
+
+    // ② Dialog: 확인 시 onSubmit 안에서 서버 등록 → 실패면 예외로 Dialog에 알림
+    final saved = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => RatingDialog(movieId: movieId),
+      barrierDismissible: false, // 저장 중 바깥 탭으로 닫히는 것도 막습니다.
+      builder: (dialogContext) => RatingDialog(
+        onSubmit: (score, comment) async {
+          await viewModel.createRating(score: score, comment: comment);
+          if (viewModel.submitStatus != SubmitStatus.success) {
+            final reason = viewModel.submitMessage ?? '저장에 실패했습니다.';
+            failedMessage = reason;
+            throw StateError(reason);
+          }
+          failedMessage = null;
+          savedScore = score;
+        },
+      ),
     );
 
-    // 취소했거나, 기다리는 동안 화면이 사라졌으면 이후 context를 쓰지 않는다.
-    if (rating == null || !mounted) return;
+    // ③ 화면이 살아 있을 때만. 저장하지 않고 닫혔다면 실패 이유가 있을 때만 안내
+    if (!mounted) return;
+    if (saved != true) {
+      final reason = failedMessage;
+      if (reason != null) _showSnackBar('평점을 등록하지 못했습니다. $reason');
+      return;
+    }
 
-    setState(() => _myRating = rating);
-    _showSnackBar('$rating점을 남겼어요.');
+    // ④ 내 평점 표시 + 성공 Snackbar
+    final score = savedScore;
+    if (score != null) setState(() => _myRating = score.toDouble());
+    _showSnackBar('평점을 등록했습니다. 마이페이지의 "내가 등록한 평점"에서 확인할 수 있습니다.');
   }
 
   // ── 공유 (BottomSheet) ──
@@ -74,21 +99,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final movie = widget.movie;
-
-    // URL의 id가 기준이다. extra가 없거나(딥링크·재시작) URL id와 다르면 표시하지 않는다.
-    // 이 분기 이후로는 Dart가 movie를 non-null(TmdbMovieDto)로 취급한다(타입 승격).
-    if (movie == null || movie.id != widget.movieId) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: const Center(
-          child: Text(
-            '영화 정보를 찾을 수 없어요.\n목록에서 다시 선택해 주세요.',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
-    }
+    // Loader가 준비한 영화와 학습용 회원 번호를 ViewModel에서 읽는다.
+    final viewModel = context.read<MovieDetailViewModel>();
+    final movie = viewModel.movie;
+    final canRate = viewModel.memberId != null; // 가입 전이면 평점 버튼 비활성
 
     final myRating = _myRating;
 
@@ -129,7 +143,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         isFavorite: _isFavorite,
         myRating: myRating,
         onFavoritePressed: _toggleFavorite,
-        onRatingPressed: () => _openRatingDialog(movie.id),
+        onRatingPressed: canRate ? _openRatingDialog : null,
       ),
     );
   }
@@ -276,7 +290,7 @@ class _DetailActions extends StatelessWidget {
   final bool isFavorite;
   final double? myRating;
   final VoidCallback onFavoritePressed;
-  final VoidCallback onRatingPressed;
+  final VoidCallback? onRatingPressed; // null이면 비활성 (가입 전)
 
   @override
   Widget build(BuildContext context) {
@@ -306,7 +320,13 @@ class _DetailActions extends StatelessWidget {
                 onPressed: onRatingPressed,
                 icon: const Icon(Icons.rate_review_outlined),
                 // 평점을 남긴 뒤에는 Dialog 반환값이 버튼 문구에 반영된다.
-                label: Text(myRating == null ? '평점 남기기' : '내 평점 $myRating'),
+                label: Text(
+                  onRatingPressed == null
+                      ? '회원가입 후 평점 남기기'
+                      : myRating == null
+                      ? '평점 남기기'
+                      : '내 평점 $myRating',
+                ),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size.fromHeight(52),
                   backgroundColor: colors.primary,
