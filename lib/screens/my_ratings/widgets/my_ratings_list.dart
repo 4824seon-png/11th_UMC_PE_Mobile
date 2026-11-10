@@ -2,12 +2,21 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/rating_with_movie.dart';
+import '../../../data/models/rating_dto.dart';
 import 'rating_card.dart';
 
 class MyRatingsList extends StatelessWidget {
-  const MyRatingsList({super.key, required this.entries, this.notice});
+  const MyRatingsList({
+    super.key,
+    required this.entries,
+    required this.onEdit,
+    required this.onDelete,
+    this.notice,
+  });
 
   final List<RatingWithMovie> entries;
+  final ValueChanged<RatingDto> onEdit; // 어느 평점의 수정인지 RatingDto로 알린다
+  final ValueChanged<RatingDto> onDelete;
   final String? notice;
 
   @override
@@ -26,7 +35,11 @@ class MyRatingsList extends StatelessWidget {
         ],
         for (final (index, entry) in entries.indexed) ...[
           if (index > 0) const SizedBox(height: 18),
-          RatingCard(entry: entry),
+          RatingCard(
+            entry: entry,
+            onEdit: () => onEdit(entry.rating),
+            onDelete: () => onDelete(entry.rating),
+          ),
         ],
       ],
     );

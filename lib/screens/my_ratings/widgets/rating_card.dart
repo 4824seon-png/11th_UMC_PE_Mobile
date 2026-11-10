@@ -3,11 +3,19 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/rating_with_movie.dart';
 import '../../../widgets/tmdb_poster_image.dart';
+import '../../../widgets/movielog_button.dart';
 
 class RatingCard extends StatelessWidget {
-  const RatingCard({super.key, required this.entry});
+  const RatingCard({
+    super.key,
+    required this.entry,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   final RatingWithMovie entry;
+  final VoidCallback onEdit; // 수정 버튼 → 화면이 RatingDialog를 연다
+  final VoidCallback onDelete; // 삭제 버튼 → 화면이 삭제 확인 Dialog를 연다
 
   String _formatDate(DateTime value) {
     final local = value.toLocal();
@@ -95,6 +103,37 @@ class RatingCard extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // ── 카드 오른쪽: 수정·삭제 버튼 (Figma 2506-80) ──
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Column(
+              children: [
+                MovieLogButton(
+                  label: '수정',
+                  width: 63,
+                  height: 35,
+                  fontSize: 13,
+                  borderRadius: 10,
+                  backgroundColor: AppColors.secondaryButton,
+                  foregroundColor: AppColors.primary,
+                  onPressed: onEdit,
+                ),
+                const SizedBox(height: 8),
+                MovieLogButton(
+                  label: '삭제',
+                  width: 63,
+                  height: 35,
+                  fontSize: 13,
+                  borderRadius: 10,
+                  backgroundColor: AppColors.dangerContainer,
+                  foregroundColor: AppColors.danger,
+                  onPressed: onDelete,
+                ),
+              ],
             ),
           ),
         ],
