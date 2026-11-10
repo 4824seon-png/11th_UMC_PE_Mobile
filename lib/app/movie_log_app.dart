@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/network/movie_log_client.dart';
-import '../data/services/member_check_service.dart';
+import '../data/services/sign_up_service.dart';
 import '../data/services/rating_api_service.dart';
+import '../view_models/learning_member_session.dart';
 
 import '../core/network/tmdb_client.dart';
 import '../data/services/tmdb_movie_service.dart';
@@ -22,14 +23,16 @@ class MovieLogApp extends StatelessWidget {
 
     return MultiProvider(
       providers: [
+        // 앱 전체가 공유하는 학습용 현재 회원 상태 (가입 결과 memberId)
+        ChangeNotifierProvider<LearningMemberSession>(
+          create: (_) => LearningMemberSession(),
+        ),
         // 상태 없는 Service는 앱 전체에서 1개를 공유한다.
         // 화면별 ViewModel은 여기가 아니라 각 Route(app_router.dart)에서 만든다.
         Provider<TmdbMovieService>(
           create: (_) => TmdbMovieService(createTmdbClient()),
         ),
-        Provider<MemberCheckService>(
-          create: (_) => MemberCheckService(movieLogClient),
-        ),
+        Provider<SignUpService>(create: (_) => SignUpService(movieLogClient)),
         Provider<RatingApiService>(
           create: (_) => RatingApiService(movieLogClient),
         ),
