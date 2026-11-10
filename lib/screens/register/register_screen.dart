@@ -6,6 +6,9 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../view_models/sign_up_view_model.dart';
+import '../../data/models/create_member_request.dart';
+import '../../view_models/learning_member_session.dart';
+import '../../view_models/submit_status.dart';
 import '../../widgets/movielog_button.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -64,13 +67,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _passwordController.text.length >= 8 &&
       _agreedToTerms;
 
-  void _submit() {
+  // ── 가입하기: 로컬 검증 → 서버 제출 → 성공이면 세션 저장 후 이동 / 실패면 Snackbar ──
+  Future<void> _submit() async {
+    // ① 로컬 Form 검증 + 키보드 닫기
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) return;
-
     FocusScope.of(context).unfocus();
 
-    context.pushReplacement('/home');
+    // ② 서버 제출 (결과는 ViewModel 필드에 남는다)
+    final viewModel = context.read<SignUpViewModel>();
+    await viewModel.submit(
+      CreateMemberRequest(
+        email: _emailController.text,
+        password: _passwordController.text,
+        nickname: _nicknameController.text,
+      ),
+    );
+
+    // ③ await 뒤: 화면이 사라졌으면 아무것도 하지 않는다
+    if (!mounted) return;
+
+    // ④ 성공: memberId를 앱 세션에 저장 → 안내 → 영화 목록으로
+    final memberId = viewModel.createdMemberId;
+    if (viewModel.submitStatus == SubmitStatus.success && memberId != null) {
+      context.read<LearningMemberSession>().setMemberId(memberId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('회원가입 완료 · 학습용 memberId: $memberId')),
+      );
+      context.go('/movies');
+      return;
+    }
+
+    // ⑤ 실패(입력칸에 붙지 않는 오류): Snackbar로 한 번만 안내
+    final message = viewModel.snackbarMessage;
+    if (message != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
+    }
   }
 
   // 가입 버튼 조건과 입력창 아이콘을 다시 계산하기 위해 화면을 다시 그린다.
@@ -92,149 +125,172 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('회원가입'),
-        centerTitle: true,
-        titleTextStyle: const TextStyle(
-          fontFamily: 'Manrope',
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          color: AppColors.primary,
-        ),
+    // 제출 중에는 뒤로가기·스와이프로 화면을 나갈 수 없게 한다 (워크북 9번)
+    return Consumer<SignUpViewModel>(
+      builder: (context, viewModel, child) => PopScope(
+        canPop: viewModel.submitStatus != SubmitStatus.submitting,
+        child: child!,
       ),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: IntrinsicHeight(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 45, 18, 44),
-                    child: Form(
-                      key: _formKey,
-                      autovalidateMode: AutovalidateMode.onUserInteraction,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const _RegisterHeader(),
-                          const SizedBox(height: 27),
-                          Consumer<SignUpViewModel>(
-                            builder: (context, viewModel, child) {
-                              final status = viewModel.nicknameCheckStatus;
-                              return _LabeledTextField(
-                                label: '닉네임',
-                                hintText: '영화광',
-                                controller: _nicknameController,
-                                validator: _validateNickname,
-                                textInputAction: TextInputAction.next,
-                                errorText: viewModel.nicknameErrorText,
-                                isVerified: status == CheckStatus.available,
-                                message: _checkMessage(status, '닉네임'),
-                                messageColor: _checkMessageColor(status),
-                                onChanged: (value) {
-                                  viewModel.onNicknameChanged(value);
-                                  _onFieldChanged(value);
-                                },
-                                onFieldSubmitted: (_) =>
-                                    _emailFocusNode.requestFocus(),
-                                trailing: MovieLogButton(
-                                  label: '중복 확인',
-                                  width: 102,
-                                  fontSize: 13,
-                                  isLoading: status == CheckStatus.checking,
-                                  onPressed: viewModel.canCheckNickname
-                                      ? () => viewModel.checkNickname(
-                                          _nicknameController.text,
-                                        )
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('회원가입'),
+          centerTitle: true,
+          titleTextStyle: const TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: AppColors.primary,
+          ),
+        ),
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 45, 18, 44),
+                      child: Form(
+                        key: _formKey,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const _RegisterHeader(),
+                            const SizedBox(height: 27),
+                            Consumer<SignUpViewModel>(
+                              builder: (context, viewModel, child) {
+                                final status = viewModel.nicknameCheckStatus;
+                                return _LabeledTextField(
+                                  label: '닉네임',
+                                  hintText: '영화광',
+                                  controller: _nicknameController,
+                                  validator: _validateNickname,
+                                  textInputAction: TextInputAction.next,
+                                  errorText: viewModel.nicknameErrorText,
+                                  isVerified: status == CheckStatus.available,
+                                  message: _checkMessage(status, '닉네임'),
+                                  messageColor: _checkMessageColor(status),
+                                  onChanged: (value) {
+                                    viewModel.onNicknameChanged(value);
+                                    _onFieldChanged(value);
+                                  },
+                                  onFieldSubmitted: (_) =>
+                                      _emailFocusNode.requestFocus(),
+                                  trailing: MovieLogButton(
+                                    label: '중복 확인',
+                                    width: 102,
+                                    fontSize: 13,
+                                    isLoading: status == CheckStatus.checking,
+                                    onPressed: viewModel.canCheckNickname
+                                        ? () => viewModel.checkNickname(
+                                            _nicknameController.text,
+                                          )
+                                        : null,
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 9),
+                            Consumer<SignUpViewModel>(
+                              builder: (context, viewModel, child) {
+                                final status = viewModel.emailCheckStatus;
+                                return _LabeledTextField(
+                                  label: '이메일',
+                                  hintText: 'movie@umc.com',
+                                  controller: _emailController,
+                                  focusNode: _emailFocusNode,
+                                  validator: _validateEmail,
+                                  keyboardType: TextInputType.emailAddress,
+                                  textInputAction: TextInputAction.next,
+                                  errorText: viewModel.emailErrorText,
+                                  isVerified: status == CheckStatus.available,
+                                  message: _checkMessage(status, '이메일'),
+                                  messageColor: _checkMessageColor(status),
+                                  onChanged: (value) {
+                                    viewModel.onEmailChanged(value);
+                                    _onFieldChanged(value);
+                                  },
+                                  onFieldSubmitted: (_) =>
+                                      _passwordFocusNode.requestFocus(),
+                                  trailing: MovieLogButton(
+                                    label: '중복 확인',
+                                    width: 102,
+                                    fontSize: 13,
+                                    isLoading: status == CheckStatus.checking,
+                                    onPressed: viewModel.canCheckEmail
+                                        ? () => viewModel.checkEmail(
+                                            _emailController.text,
+                                          )
+                                        : null,
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 9),
+                            Consumer<SignUpViewModel>(
+                              builder: (context, viewModel, child) {
+                                return _LabeledTextField(
+                                  label: '비밀번호',
+                                  hintText: '••••••••',
+                                  controller: _passwordController,
+                                  focusNode: _passwordFocusNode,
+                                  validator: _validatePassword,
+                                  obscureText: true,
+                                  textInputAction: TextInputAction.done,
+                                  // 서버 400(비밀번호 형식) 문구 — 로컬 validator와 함께 동작
+                                  errorText: viewModel.passwordErrorText,
+                                  onChanged: (value) {
+                                    viewModel.onPasswordChanged();
+                                    _onFieldChanged(value);
+                                  },
+                                  onFieldSubmitted: (_) =>
+                                      FocusScope.of(context).unfocus(),
+                                );
+                              },
+                            ),
+                            const Spacer(),
+                            const SizedBox(height: 24),
+                            _TermsCheckbox(
+                              value: _agreedToTerms,
+                              onChanged: (value) {
+                                setState(() => _agreedToTerms = value);
+                              },
+                            ),
+                            const SizedBox(height: 24),
+                            Consumer<SignUpViewModel>(
+                              builder: (context, viewModel, child) {
+                                final isSubmitting =
+                                    viewModel.submitStatus ==
+                                    SubmitStatus.submitting;
+                                return MovieLogButton(
+                                  label: '가입하기',
+                                  width: double.infinity,
+                                  isLoading: isSubmitting,
+                                  // 로컬 검증 + 중복 확인 2개 통과 + 제출 중 아님
+                                  onPressed:
+                                      _canSubmit &&
+                                          viewModel.isDuplicateCheckPassed &&
+                                          !isSubmitting
+                                      ? _submit
                                       : null,
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 9),
-                          Consumer<SignUpViewModel>(
-                            builder: (context, viewModel, child) {
-                              final status = viewModel.emailCheckStatus;
-                              return _LabeledTextField(
-                                label: '이메일',
-                                hintText: 'movie@umc.com',
-                                controller: _emailController,
-                                focusNode: _emailFocusNode,
-                                validator: _validateEmail,
-                                keyboardType: TextInputType.emailAddress,
-                                textInputAction: TextInputAction.next,
-                                errorText: viewModel.emailErrorText,
-                                isVerified: status == CheckStatus.available,
-                                message: _checkMessage(status, '이메일'),
-                                messageColor: _checkMessageColor(status),
-                                onChanged: (value) {
-                                  viewModel.onEmailChanged(value);
-                                  _onFieldChanged(value);
-                                },
-                                onFieldSubmitted: (_) =>
-                                    _passwordFocusNode.requestFocus(),
-                                trailing: MovieLogButton(
-                                  label: '중복 확인',
-                                  width: 102,
-                                  fontSize: 13,
-                                  isLoading: status == CheckStatus.checking,
-                                  onPressed: viewModel.canCheckEmail
-                                      ? () => viewModel.checkEmail(
-                                          _emailController.text,
-                                        )
-                                      : null,
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 9),
-                          _LabeledTextField(
-                            label: '비밀번호',
-                            hintText: '••••••••',
-                            controller: _passwordController,
-                            focusNode: _passwordFocusNode,
-                            validator: _validatePassword,
-                            obscureText: true,
-                            textInputAction: TextInputAction.done,
-                            onChanged: _onFieldChanged,
-                            onFieldSubmitted: (_) =>
-                                FocusScope.of(context).unfocus(),
-                          ),
-                          const Spacer(),
-                          const SizedBox(height: 24),
-                          _TermsCheckbox(
-                            value: _agreedToTerms,
-                            onChanged: (value) {
-                              setState(() => _agreedToTerms = value);
-                            },
-                          ),
-                          const SizedBox(height: 24),
-                          Consumer<SignUpViewModel>(
-                            builder: (context, viewModel, child) {
-                              return MovieLogButton(
-                                label: '가입하기',
-                                width: double.infinity,
-                                onPressed:
-                                    _canSubmit &&
-                                        viewModel.isDuplicateCheckPassed
-                                    ? _submit
-                                    : null,
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 52),
-                          const _LoginPrompt(),
-                        ],
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 52),
+                            const _LoginPrompt(),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );

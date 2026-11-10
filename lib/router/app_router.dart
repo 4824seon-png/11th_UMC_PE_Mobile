@@ -7,18 +7,19 @@ import '../data/services/tmdb_movie_service.dart';
 import '../data/storage/genre_preference.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/main/main_screen.dart';
-import '../screens/movie_detail/movie_detail_screen.dart';
+import '../screens/movie_detail/movie_detail_loader.dart';
 import '../screens/movie_list/movie_list_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/register/register_screen.dart';
 import '../screens/start/start_screen.dart';
 import '../view_models/movie_home_view_model.dart';
 import '../view_models/movie_list_view_model.dart';
-import '../data/services/member_check_service.dart';
+import '../data/services/sign_up_service.dart';
 import '../view_models/sign_up_view_model.dart';
 import '../data/services/rating_api_service.dart';
 import '../screens/my_ratings/my_ratings_screen.dart';
 import '../view_models/my_ratings_view_model.dart';
+import '../view_models/learning_member_session.dart';
 
 /// 앱의 모든 경로(URL)와 화면의 연결을 한 곳에서 관리한다.
 class AppRouter {
@@ -38,8 +39,7 @@ class AppRouter {
       GoRoute(
         path: '/register',
         builder: (context, state) => ChangeNotifierProvider(
-          create: (context) =>
-              SignUpViewModel(context.read<MemberCheckService>()),
+          create: (context) => SignUpViewModel(context.read<SignUpService>()),
           child: const RegisterScreen(),
         ),
       ),
@@ -82,15 +82,31 @@ class AppRouter {
               GoRoute(
                 path: 'ratings',
                 parentNavigatorKey: rootNavigatorKey,
-                builder: (context, state) =>
-                    ChangeNotifierProvider<MyRatingsViewModel>(
-                      create: (context) => MyRatingsViewModel(
-                        context.read<RatingApiService>(),
-                        context.read<TmdbMovieService>(),
-                        sampleMemberId,
-                      )..load(),
-                      child: const MyRatingsScreen(),
-                    ),
+                builder: (context, state) {
+                  // ── ① 세션에서 현재 학습용 회원 번호 읽기 ──
+                  final id = context.read<LearningMemberSession>().memberId;
+
+                  // ── ② 가입 전(null)이면 요청하지 않고 안내 화면 ──
+                  if (id == null) {
+                    return Scaffold(
+                      appBar: AppBar(
+                        centerTitle: true,
+                        title: const Text('내가 등록한 평점'),
+                      ),
+                      body: const Center(child: Text('학습용 회원가입이 필요합니다.')),
+                    );
+                  }
+
+                  // ── ③ 번호가 있으면 그 번호로 ViewModel 생성 + 첫 조회 ──
+                  return ChangeNotifierProvider<MyRatingsViewModel>(
+                    create: (context) => MyRatingsViewModel(
+                      context.read<RatingApiService>(),
+                      context.read<TmdbMovieService>(),
+                      id,
+                    )..load(),
+                    child: const MyRatingsScreen(),
+                  );
+                },
               ),
             ],
           ),
@@ -104,11 +120,22 @@ class AppRouter {
         // ':movieId' = Path Parameter. 아래 pathParameters의 key와 철자가 같아야 한다.
         path: '/movies/:movieId',
         builder: (context, state) {
+          // ① URL 값은 항상 String → int로 변환. 숫자가 아니거나 1 미만이면 안내
+          final id = int.tryParse(state.pathParameters['movieId'] ?? '');
+          if (id == null || id < 1) {
+            return Scaffold(
+              appBar: AppBar(),
+              body: const Center(child: Text('영화 ID가 올바르지 않습니다.')),
+            );
+          }
+
+          // ② extra는 URL id와 같은 영화일 때만 사용 (아니면 Loader가 TMDB 조회)
           final extra = state.extra;
-          return MovieDetailScreen(
-            // URL 값은 항상 String → int로 변환한다. 숫자가 아니면 null.
-            movieId: int.tryParse(state.pathParameters['movieId'] ?? ''),
-            movie: extra is TmdbMovieDto ? extra : null,
+          return MovieDetailLoader(
+            movieId: id,
+            initialMovie: extra is TmdbMovieDto && extra.id == id
+                ? extra
+                : null,
           );
         },
       ),

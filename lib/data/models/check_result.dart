@@ -3,7 +3,7 @@
 // 모델을 두면 key를 다루는 곳이 fromJson 한 곳으로 줄고
 // 나머지 코드는 result.available처럼 타입이 정해진 값을 쓴다
 
-// v5는 응답 body가 곧 결과
+// v6도 성공 응답은 봉투 없이 body가 곧 결과 (실패만 CommonResponse 봉투)
 // 그래서 json['result']['available']이 아니라 json['available']을 읽는다
 
 class CheckResult {

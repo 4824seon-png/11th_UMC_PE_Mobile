@@ -32,4 +32,13 @@ class AppColors {
   static const Color posterPlaceholder = Color(0xFFD8D2E0); // 포스터 대체 배경
   static const Color commentText = Color(0xFF655F6C); // 후기·등록일 글자
   static const Color entryBorder = Color(0xFFD6C9E8); // 마이페이지 진입 행 테두리
+
+  // ── 7주차 Figma (평점 Dialog·카드 버튼·삭제 Dialog) ──
+  static const Color secondaryButton = Color(0xFFF0EBF8); // 취소·수정 버튼 배경
+  static const Color dialogInputFill = Color(0xFFFAF8FD); // Dialog 코멘트 입력창 배경
+  static const Color dialogInputBorder = Color(
+    0xFFD8D2E0,
+  ); // Dialog 코멘트 입력창 테두리
+  static const Color dangerContainer = Color(0xFFFFF2F0); // 삭제 버튼 배경
+  static const Color danger = Color(0xFFB3261E); // 삭제 버튼 글자
 }
