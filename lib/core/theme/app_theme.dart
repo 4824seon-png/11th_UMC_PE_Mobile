@@ -86,6 +86,7 @@ class AppTheme {
       errorStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
       enabledBorder: _inputBorder(AppColors.inputBorder), // 기본 상태
       focusedBorder: _inputBorder(AppColors.primary, width: 2), // 입력 중
+      disabledBorder: _inputBorder(AppColors.inputDisabledFill), // 읽기 전용
       errorBorder: _inputBorder(_colorScheme.error), // 검증 실패
       // 검증 실패 + 입력 중
       focusedErrorBorder: _inputBorder(_colorScheme.error, width: 2),

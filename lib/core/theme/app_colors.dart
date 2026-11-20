@@ -41,4 +41,7 @@ class AppColors {
   ); // Dialog 코멘트 입력창 테두리
   static const Color dangerContainer = Color(0xFFFFF2F0); // 삭제 버튼 배경
   static const Color danger = Color(0xFFB3261E); // 삭제 버튼 글자
+  static const Color inputDisabledFill = Color(
+    0xFFEFEDF2,
+  ); // 읽기 전용 입력창 배경 (프로필 이메일)
 }

@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../view_models/sign_up_view_model.dart';
 import '../../data/models/create_member_request.dart';
-import '../../view_models/learning_member_session.dart';
 import '../../view_models/submit_status.dart';
 import '../../widgets/movielog_button.dart';
 
@@ -90,11 +89,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // ④ 성공: memberId를 앱 세션에 저장 → 안내 → 영화 목록으로
     final memberId = viewModel.createdMemberId;
     if (viewModel.submitStatus == SubmitStatus.success && memberId != null) {
-      context.read<LearningMemberSession>().setMemberId(memberId);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('회원가입 완료 · 학습용 memberId: $memberId')),
-      );
-      context.go('/movies');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('회원가입이 완료됐어요. 로그인해 주세요.')));
+      context.go('/login');
       return;
     }
 

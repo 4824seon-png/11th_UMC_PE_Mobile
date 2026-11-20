@@ -1,8 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../data/storage/token_storage.dart';
+import '../../view_models/auth_view_model.dart';
 import '../../widgets/movielog_app_bar.dart';
 import 'widgets/stat_item.dart';
 
@@ -12,7 +16,14 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      appBar: MovieLogAppBar(title: '내 프로필'),
+      appBar: MovieLogAppBar(
+        title: '내 프로필',
+        actions: [
+          // kDebugMode는 const → release 빌드에서는 이 버튼이 아예 빠진다.
+          if (kDebugMode) _DebugInvalidateTokenButton(),
+          _LogoutButton(),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -32,6 +43,46 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
+/// 앱바 로그아웃. 상태만 signedOut으로 바꾸고 이동은 Router가 한다.
+/// 직접 로그아웃은 expired=false → 만료 Snackbar가 뜨지 않는다.
+class _LogoutButton extends StatelessWidget {
+  const _LogoutButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final cleaning = context.select<AuthViewModel, bool>(
+      (auth) => auth.storageCleanupInProgress,
+    );
+    return TextButton(
+      onPressed: cleaning ? null : () => context.read<AuthViewModel>().logout(),
+      child: const Text('로그아웃', style: TextStyle(fontSize: 13)),
+    );
+  }
+}
+
+/// [디버그 전용] 저장된 토큰을 서버가 거절할 값으로 바꿔 401(AUTH401_3)을 재현한다.
+/// 이후 보호 요청(평점·닉네임 저장)이나 앱 재시작에서 만료 흐름을 촬영할 수 있다.
+class _DebugInvalidateTokenButton extends StatelessWidget {
+  const _DebugInvalidateTokenButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: '토큰 무효화 (디버그)',
+      icon: const Icon(Icons.bug_report_outlined),
+      onPressed: () async {
+        // await 전에 필요한 것을 꺼내 둔다 (await 뒤 context 사용 방지)
+        final storage = context.read<TokenStorage>();
+        final messenger = ScaffoldMessenger.of(context);
+        await storage.saveAccessToken('invalid-token-for-test');
+        messenger.showSnackBar(
+          const SnackBar(content: Text('[디버그] 토큰을 무효화했어요. 보호 요청을 보내 보세요.')),
+        );
+      },
+    );
+  }
+}
+
 class ProfileHeader extends StatelessWidget {
   const ProfileHeader({super.key});
 
@@ -39,6 +90,11 @@ class ProfileHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    // member의 닉네임·이메일만 구독 (record는 값 비교 → 둘 중 하나가 바뀔 때만 rebuild)
+    final (nickname, email) = context.select<AuthViewModel, (String?, String?)>(
+      (auth) => (auth.member?.nickname, auth.member?.email),
+    );
+    final hasMember = nickname != null;
 
     return Column(
       children: [
@@ -53,28 +109,27 @@ class ProfileHeader extends StatelessWidget {
               'assets/images/profile/profile_movielog.jpg',
               width: 120,
               height: 120,
-              fit: BoxFit.cover, // 비율을 유지하며 영역을 꽉 채움
+              fit: BoxFit.cover,
             ),
           ),
         ),
         const SizedBox(height: 16),
-        Text('무비러버', style: textTheme.titleLarge),
+        // GET me 완료 전에는 자리만 유지 (로딩·재시도 UI는 Challenge)
+        Text(nickname ?? '…', style: textTheme.titleLarge),
         const SizedBox(height: 8),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            '매주 주말엔 영화관으로 출근하는 프로 관람객. 좋은 영화를 보고 기록하는 것을 좋아합니다.',
-            textAlign: TextAlign.center,
-          ),
+        Text(
+          email ?? '',
+          style: const TextStyle(fontSize: 13, color: AppColors.commentText),
         ),
-        // Margin: 버튼 '바깥'을 띄운다 (소개 문장과의 간격)
         Container(
-          margin: const EdgeInsets.only(top: 16),
+          margin: const EdgeInsets.only(top: 32),
           child: TextButton(
-            onPressed: () {}, // 1주차에는 동작을 연결하지 않습니다.
+            // 내 정보가 있어야 수정 화면을 채울 수 있다 → 그 전엔 비활성
+            onPressed: hasMember
+                ? () => context.push('/my/profile/edit')
+                : null,
             style: TextButton.styleFrom(
               side: BorderSide(color: colors.primary),
-              // Padding: 버튼 '안쪽'을 띄운다 (테두리와 글자 사이)
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             child: const Text('프로필 수정'),

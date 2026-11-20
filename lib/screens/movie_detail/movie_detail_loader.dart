@@ -4,9 +4,10 @@ import 'package:provider/provider.dart';
 import '../../data/models/tmdb_movie_dto.dart';
 import '../../data/services/rating_api_service.dart';
 import '../../data/services/tmdb_movie_service.dart';
-import '../../view_models/learning_member_session.dart';
 import '../../view_models/movie_detail_view_model.dart';
 import 'movie_detail_screen.dart';
+import '../../view_models/auth_view_model.dart';
+import '../../view_models/session_ratings.dart';
 
 /// 영화 상세의 시작점. 영화 데이터를 준비한 뒤 ViewModel과 화면을 만든다.
 class MovieDetailLoader extends StatefulWidget {
@@ -61,9 +62,11 @@ class _MovieDetailLoaderState extends State<MovieDetailLoader> {
         return ChangeNotifierProvider<MovieDetailViewModel>(
           create: (context) => MovieDetailViewModel(
             context.read<RatingApiService>(),
-            context.read<LearningMemberSession>().memberId,
+            context.read<AuthViewModel>(),
+            context.read<SessionRatings>(),
             snapshot.data!,
           ),
+
           child: const MovieDetailScreen(),
         );
       },

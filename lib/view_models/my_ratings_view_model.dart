@@ -1,124 +1,84 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../data/models/rating_with_movie.dart';
-import '../data/models/tmdb_movie_dto.dart';
 import '../data/services/rating_api_service.dart';
-import '../data/services/tmdb_movie_service.dart';
+import 'auth_view_model.dart';
+import 'session_ratings.dart';
 
-enum MyRatingsLoadStatus { idle, loading, success, empty, error }
-
+/// 내가 등록한 평점 화면. 목록은 SessionRatings(이번 세션 등록분)를 그대로 보여주고,
+/// 이 ViewModel은 v7 PATCH/DELETE와 실패 처리만 담당한다.
 class MyRatingsViewModel extends ChangeNotifier {
-  MyRatingsViewModel(this._service, this._movieService, this.memberId);
+  MyRatingsViewModel(this._service, this._auth, this._sessionRatings) {
+    // 보관소가 바뀌면(등록·수정·삭제·세션 정리) 화면도 다시 그린다.
+    _sessionRatings.addListener(_notify);
+  }
+
   final RatingApiService _service;
-  final TmdbMovieService _movieService;
-  final int memberId;
-  final Map<int, TmdbMovieDto?> _movieCache = {};
-  int _requestVersion = 0;
+  final AuthViewModel _auth;
+  final SessionRatings _sessionRatings;
   bool _disposed = false;
 
-  List<RatingWithMovie> ratings = const [];
-  MyRatingsLoadStatus status = MyRatingsLoadStatus.idle;
-  String? message;
-  String? refreshWarning; // 쓰기는 성공했지만 재조회(GET)가 실패했을 때의 안내
+  List<RatingWithMovie> get ratings => _sessionRatings.entries;
 
-  Future<void> load() async {
-    final version = ++_requestVersion;
-    status = MyRatingsLoadStatus.loading;
-    message = null;
-    refreshWarning = null; // 새로 조회할 때마다 이전 안내를 지운다
-    notifyListeners();
-    try {
-      final rawRatings = await _service.fetchMyRatings(memberId);
-      if (_disposed || version != _requestVersion) return;
-      final entries = <RatingWithMovie>[];
-      var missingMovies = 0;
-      // 같은 movieId는 캐시를 사용하고, 영화 조회 실패가 평점 목록을 지우지 않습니다.
-      for (final rating in rawRatings) {
-        if (_disposed || version != _requestVersion) return;
-        if (!_movieCache.containsKey(rating.movieId)) {
-          try {
-            _movieCache[rating.movieId] = await _movieService.findMovieById(
-              rating.movieId,
-            );
-          } on DioException {
-            // 일시적 네트워크 실패는 캐시하지 않습니다. 다음 로딩에서 재시도합니다.
-          }
-        }
-        final movie = _movieCache[rating.movieId];
-        if (movie == null) missingMovies++;
-        entries.add(RatingWithMovie(rating: rating, movie: movie));
-      }
-      if (_disposed || version != _requestVersion) return;
-      ratings = entries;
-      status = entries.isEmpty
-          ? MyRatingsLoadStatus.empty
-          : MyRatingsLoadStatus.success;
-      if (missingMovies > 0) {
-        message = '일부 영화 정보를 가져오지 못해 제목·포스터를 대신 표시합니다.';
-      }
-    } on DioException catch (error) {
-      if (_disposed || version != _requestVersion) return;
-      status = MyRatingsLoadStatus.error;
-      message = writeMyRatingsErrorMessage(error);
-    }
-    if (!_disposed && version == _requestVersion) notifyListeners();
-  }
-
-  // ── ① 쓰기 성공 후 목록 재조회: GET 실패를 저장 실패로 바꾸지 않는다 ──
-  // PATCH·DELETE가 성공한 순간 서버의 데이터는 이미 바뀌었으므로
-  // GET 실패를 「저장 실패」로 보고하면, 사용자는 다시 저장 등록이라면 409, 삭제라면 404
-  // 그래서 GET 실패는 예외로 던지지 않고 refreshWarning이라는 별도 상태
-  Future<void> _refreshAfterWrite() async {
-    // [인증 촬영용 · 비활성] 쓰기 직후 재조회 GET 한 번을 실패시키려면 주석을 푼다.
-    // RatingApiService.debugFailNextFetch = true;
-    await load(); // load()는 GET 실패를 status=error로 기록합니다.
-    if (_disposed) return;
-    if (status == MyRatingsLoadStatus.error) {
-      refreshWarning = '저장은 완료됐지만 목록을 불러오지 못했습니다. 조회만 다시 시도해 주세요.';
-      notifyListeners();
-    }
-  }
-
-  // ── ② 수정: PATCH 실패만 Dialog에 실패로 알리고, 성공이면 재조회 ──
+  // ── ① 수정: 성공 응답(최신 Rating)으로 카드 교체. GET 재조회 없음 ──
   Future<void> updateRating({
     required int ratingId,
     required int score,
     String? comment,
   }) async {
+    final version = _auth.sessionVersion;
     try {
-      await _service.updateRating(
-        memberId: memberId,
+      final updated = await _service.updateRating(
         ratingId: ratingId,
         score: score,
         comment: comment,
       );
-    } on DioException catch (error) {
-      // ②-1 서버 문구를 먼저 꺼내 두고, 403·404면 목록을 서버와 맞춘 뒤 Dialog에 실패를 알린다
-      final errorMessage = writeErrorMessage(error);
-      if (shouldRefreshAfterRatingError(error)) await load();
-      throw StateError(errorMessage);
+      _sessionRatings.replace(updated, version);
+    } catch (error) {
+      await _handleWriteError(error, ratingId, version);
     }
-    // ②-2 쓰기 성공. GET 실패는 다시 던지지 않는다
-    await _refreshAfterWrite();
   }
 
-  // ── ③ 삭제: DELETE 실패만 Dialog에 실패로 알리고, 성공이면 재조회 ──
+  // ── ② 삭제: 200 성공이면 카드 제거 ──
   Future<void> deleteRating(int ratingId) async {
+    final version = _auth.sessionVersion;
     try {
-      await _service.deleteRating(memberId: memberId, ratingId: ratingId);
-    } on DioException catch (error) {
-      final errorMessage = writeErrorMessage(error);
-      if (shouldRefreshAfterRatingError(error)) await load();
-      throw StateError(errorMessage);
+      await _service.deleteRating(ratingId);
+      _sessionRatings.remove(ratingId, version);
+    } catch (error) {
+      await _handleWriteError(error, ratingId, version);
     }
-    await _refreshAfterWrite();
+  }
+
+  // ── ③ 실패 공통 처리: 다음 행동을 정한 뒤 Dialog에는 StateError(문구)로 알린다 ──
+  Future<Never> _handleWriteError(
+    Object error,
+    int ratingId,
+    int version,
+  ) async {
+    final message = ratingFailureMessage(error);
+    switch (ratingFailureOf(error)) {
+      case RatingFailure.sessionExpired:
+        await _auth.expireSession(version); // → /login + 만료 Snackbar
+      case RatingFailure.notFound:
+        _sessionRatings.remove(ratingId, version); // 서버에 없으니 목록도 맞춘다
+      case RatingFailure.forbidden ||
+          RatingFailure.duplicated ||
+          RatingFailure.invalid ||
+          RatingFailure.unknown:
+        break; // 안내만. 로그아웃하지 않는다
+    }
+    throw StateError(message);
+  }
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
   }
 
   @override
   void dispose() {
     _disposed = true;
-    _requestVersion++;
+    _sessionRatings.removeListener(_notify);
     super.dispose();
   }
 }

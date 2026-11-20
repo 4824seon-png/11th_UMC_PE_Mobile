@@ -1,50 +1,113 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../core/network/movie_log_client.dart';
-import '../data/services/sign_up_service.dart';
-import '../data/services/rating_api_service.dart';
-import '../view_models/learning_member_session.dart';
-
 import '../core/network/tmdb_client.dart';
-import '../data/services/tmdb_movie_service.dart';
-import '../router/app_router.dart';
 import '../core/theme/app_theme.dart';
+import '../data/services/auth_api_service.dart';
+import '../data/services/member_api_service.dart';
+import '../data/services/rating_api_service.dart';
+import '../data/services/sign_up_service.dart';
+import '../data/services/tmdb_movie_service.dart';
+import '../data/storage/token_storage.dart';
+import '../router/app_router.dart';
+import '../view_models/auth_view_model.dart';
+import '../view_models/session_ratings.dart';
 
-/// 앱의 최상단 위젯.
-
-/// MaterialApp.router 바깥에 있어야 GoRouter가 만드는 모든 화면에서 context.read로 찾을 수 있다.
+/// 앱의 최상단 위젯. 앱 전역 의존성을 등록한다.
+/// 객체는 build()가 아니라 Provider의 create에서 만든다 → rebuild돼도 한 번만 생성된다.
 class MovieLogApp extends StatelessWidget {
   const MovieLogApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final movieLogClient = createMovieLogClient();
-
     return MultiProvider(
       providers: [
-        // 앱 전체가 공유하는 학습용 현재 회원 상태 (가입 결과 memberId)
-        ChangeNotifierProvider<LearningMemberSession>(
-          create: (_) => LearningMemberSession(),
+        // 토큰 저장소 (Keychain/Keystore)
+        Provider<TokenStorage>(
+          create: (_) => SecureTokenStorage(const FlutterSecureStorage()),
         ),
-        // 상태 없는 Service는 앱 전체에서 1개를 공유한다.
-        // 화면별 ViewModel은 여기가 아니라 각 Route(app_router.dart)에서 만든다.
+
+        // TMDB Client: MovieLog JWT를 절대 싣지 않는다.
         Provider<TmdbMovieService>(
           create: (_) => TmdbMovieService(createTmdbClient()),
         ),
-        Provider<SignUpService>(create: (_) => SignUpService(movieLogClient)),
+        // ── 공개 Client (Interceptor 없음) ──
+        Provider<SignUpService>(
+          create: (_) => SignUpService(createMovieLogClient()),
+        ),
+        Provider<AuthApiService>(
+          create: (_) => AuthApiService(createMovieLogClient()),
+        ),
+        // 유저별 조회(공개)와 등록·수정·삭제(보호)를 모두 맡으므로 두 Client를 받는다.
         Provider<RatingApiService>(
-          create: (_) => RatingApiService(movieLogClient),
+          create: (context) => RatingApiService(
+            createMovieLogClient(),
+            createAuthMovieLogClient(context.read<TokenStorage>()),
+          ),
+        ),
+        // ── 보호 Client (AuthInterceptor 등록) ──
+        Provider<MemberApiService>(
+          create: (context) => MemberApiService(
+            createAuthMovieLogClient(context.read<TokenStorage>()),
+          ),
+        ),
+        // Service를 주입받는 앱 전역 인증 상태
+        ChangeNotifierProvider<AuthViewModel>(
+          create: (context) => AuthViewModel(
+            context.read<AuthApiService>(),
+            context.read<MemberApiService>(),
+            context.read<TokenStorage>(),
+          ),
+        ),
+
+        // 이번 세션 평점 보관소. AuthViewModel의 세션 변경을 구독해 스스로 비운다.
+        ChangeNotifierProvider<SessionRatings>(
+          create: (context) => SessionRatings(context.read<AuthViewModel>()),
         ),
       ],
-      // MaterialApp.router: 앱 전역 설정(테마·제목)만 담당하고,
-      // 어떤 화면을 보여줄지는 routerConfig로 넘긴 GoRouter가 결정한다.
-      child: MaterialApp.router(
-        debugShowCheckedModeBanner: false,
-        title: 'MovieLog',
-        theme: AppTheme.light,
-        routerConfig: AppRouter.router, // static final → 앱 전체에서 라우터 1개 유지
-      ),
+      child: const _MovieLogRouterApp(),
+    );
+  }
+}
+
+/// GoRouter를 한 번만 만들고, 첫 frame 뒤 세션 복원을 시작하는 호스트.
+class _MovieLogRouterApp extends StatefulWidget {
+  const _MovieLogRouterApp();
+
+  @override
+  State<_MovieLogRouterApp> createState() => _MovieLogRouterAppState();
+}
+
+class _MovieLogRouterAppState extends State<_MovieLogRouterApp> {
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+    final authViewModel = context.read<AuthViewModel>();
+    _router = AppRouter.createRouter(authViewModel);
+    // build 도중 notifyListeners()가 불리지 않도록 첫 frame 이후에 시작한다.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) authViewModel.restoreSession();
+    });
+  }
+
+  @override
+  void dispose() {
+    _router.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      title: 'MovieLog',
+      theme: AppTheme.light,
+      routerConfig: _router,
     );
   }
 }

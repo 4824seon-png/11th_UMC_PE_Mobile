@@ -11,14 +11,6 @@ import '../models/sign_up_models.dart';
 // Service는 HTTP 요청을 보내고 응답을 Dart 값으로 바꾸는 일만
 // 저장하는 상태도 없어서 앱 전체에서 하나만 만들어 공유
 
-// V5와 V6의 차이
-// 쓸 수 있는 API 추가, 응답 구조 변경
-// v5는 읽기 전용 서버였고, v6부터 쓰기가 생김
-// v5: 성공하면 데이터를 그대로 줍니다.
-// 예: { "available": true }, [ {...}, {...} ]
-// v6: 새 API의 성공과 모든 실패를 이 봉투에 담아 줍니다.
-// 예: { "isSuccess": true, "resultCode": 100, "resultMessage": "성공", "result": { "available": true } }, { "isSuccess": false, "resultCode": 201, "resultMessage": "이미 존재하는 이메일입니다." }
-// 중복 확인 통과는 최종 확정이 아니다. 최종 판정은 가입 POST의 409
 class SignUpService {
   SignUpService(this._dio);
   // Service가 Dio를 직접 만들지 않고 생성자로 받는다 : 의존성 주입
@@ -26,7 +18,7 @@ class SignUpService {
 
   Future<bool> checkNickname(String nickname) async {
     final encoded = Uri.encodeComponent(nickname.trim());
-    final response = await _dio.get('/v6/members/nickname/$encoded');
+    final response = await _dio.get('/v7/members/nickname/$encoded');
     // 경로만 적는 이유 : 서버 주소를 Dio의 baseUrl에 한 번만 설정
     // Dio가 요청할 때 둘을 합친다. (baseUrl + path)
     // 주소가 바뀌어도 Client 한 곳만 수정
@@ -40,7 +32,7 @@ class SignUpService {
   Future<bool> checkEmail(String email) async {
     // 호출하는 쪽에 필요한 것은 사용 가능 여부 하나이므로 .available만 꺼내 돌려준다.
     final encoded = Uri.encodeComponent(email.trim());
-    final response = await _dio.get('/v6/members/email/$encoded');
+    final response = await _dio.get('/v7/members/email/$encoded');
     return CheckResult.fromJson(response.data as Map<String, dynamic>)
         .available;
   }
@@ -51,7 +43,7 @@ class SignUpService {
   ) async {
     // ①-1 요청 보내기: path + body
     // get과 달리 post는 body를 가질 수 있고, 그 자리가 data
-    final response = await _dio.post('/v6/members', data: request.toJson());
+    final response = await _dio.post('/v7/members', data: request.toJson());
 
     // ①-2 응답 열기: 봉투는 CommonResponse가, 내용물은 SignUpResult가 해석
     return CommonResponse<SignUpResult>.fromJson(
