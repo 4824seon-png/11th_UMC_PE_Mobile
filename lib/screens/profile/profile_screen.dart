@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import '../../view_models/auth_view_model.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../widgets/movielog_app_bar.dart';
@@ -39,6 +42,10 @@ class ProfileHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    // member.nickname만 구독: 닉네임이 바뀔 때만 다시 그린다.
+    final nickname = context.select<AuthViewModel, String?>(
+      (auth) => auth.member?.nickname,
+    );
 
     return Column(
       children: [
@@ -58,7 +65,8 @@ class ProfileHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        Text('무비러버', style: textTheme.titleLarge),
+        // GET me 완료 전에는 자리만 유지 (로딩·재시도 UI는 Challenge)
+        Text(nickname ?? '…', style: textTheme.titleLarge),
         const SizedBox(height: 8),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
