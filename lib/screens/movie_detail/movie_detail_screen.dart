@@ -319,14 +319,10 @@ class _DetailActions extends StatelessWidget {
               child: ElevatedButton.icon(
                 onPressed: onRatingPressed,
                 icon: const Icon(Icons.rate_review_outlined),
-                // 평점을 남긴 뒤에는 Dialog 반환값이 버튼 문구에 반영된다.
-                label: Text(
-                  onRatingPressed == null
-                      ? '회원가입 후 평점 남기기'
-                      : myRating == null
-                      ? '평점 남기기'
-                      : '내 평점 $myRating',
-                ),
+                // 내 별점은 SessionRatings에서 읽는다.
+                // 로그인 사용자만 들어올 수 있으므로 "회원가입 후" 분기는 없다.
+                // 이번 세션에 남겼으면 비활성 + 내 별점 표시
+                label: Text(myRating == null ? '평점 남기기' : '내 평점 $myRating'),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size.fromHeight(52),
                   backgroundColor: colors.primary,
