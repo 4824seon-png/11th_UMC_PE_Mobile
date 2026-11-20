@@ -19,7 +19,7 @@ import '../view_models/sign_up_view_model.dart';
 import '../data/services/rating_api_service.dart';
 import '../screens/my_ratings/my_ratings_screen.dart';
 import '../view_models/my_ratings_view_model.dart';
-import '../view_models/learning_member_session.dart';
+import '../view_models/session_ratings.dart';
 import '../screens/login/login_screen.dart';
 import '../view_models/auth_view_model.dart';
 
@@ -117,31 +117,15 @@ class AppRouter {
               GoRoute(
                 path: 'ratings',
                 parentNavigatorKey: rootNavigatorKey,
-                builder: (context, state) {
-                  // ── ① 세션에서 현재 학습용 회원 번호 읽기 ──
-                  final id = context.read<LearningMemberSession>().memberId;
-
-                  // ── ② 가입 전(null)이면 요청하지 않고 안내 화면 ──
-                  if (id == null) {
-                    return Scaffold(
-                      appBar: AppBar(
-                        centerTitle: true,
-                        title: const Text('내가 등록한 평점'),
+                builder: (context, state) =>
+                    ChangeNotifierProvider<MyRatingsViewModel>(
+                      create: (context) => MyRatingsViewModel(
+                        context.read<RatingApiService>(),
+                        context.read<AuthViewModel>(),
+                        context.read<SessionRatings>(),
                       ),
-                      body: const Center(child: Text('학습용 회원가입이 필요합니다.')),
-                    );
-                  }
-
-                  // ── ③ 번호가 있으면 그 번호로 ViewModel 생성 + 첫 조회 ──
-                  return ChangeNotifierProvider<MyRatingsViewModel>(
-                    create: (context) => MyRatingsViewModel(
-                      context.read<RatingApiService>(),
-                      context.read<TmdbMovieService>(),
-                      id,
-                    )..load(),
-                    child: const MyRatingsScreen(),
-                  );
-                },
+                      child: const MyRatingsScreen(),
+                    ),
               ),
             ],
           ),

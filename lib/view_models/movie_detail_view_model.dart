@@ -1,16 +1,25 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../data/models/rating_request.dart';
+import '../data/models/rating_with_movie.dart';
 import '../data/models/tmdb_movie_dto.dart';
 import '../data/services/rating_api_service.dart';
+import 'auth_view_model.dart';
+import 'session_ratings.dart';
 import 'submit_status.dart';
 
 class MovieDetailViewModel extends ChangeNotifier {
-  // ── ① 의존성 + 화면 데이터 (생성 시점에 정해짐) ──
-  MovieDetailViewModel(this._ratingService, this.memberId, this.movie);
+  // ── ① 의존성 + 화면 데이터 ──
+  MovieDetailViewModel(
+    this._ratingService,
+    this._auth,
+    this._sessionRatings,
+    this.movie,
+  );
+
   final RatingApiService _ratingService;
-  final int? memberId; // 학습용 현재 회원. 로그인 인증은 아닙니다.
+  final AuthViewModel _auth; // 세션 번호 확인 + 401 시 세션 정리
+  final SessionRatings _sessionRatings; // 등록 결과 보관
   final TmdbMovieDto movie;
 
   // ── ② 평점 등록 상태 ──
@@ -18,52 +27,42 @@ class MovieDetailViewModel extends ChangeNotifier {
   String? submitMessage;
   bool _disposed = false;
 
-  // ── ③ 평점 등록 ──
+  // ── ③ 평점 등록 (v7: memberId 없음, Authorization 헤더로 작성자 식별) ──
   Future<void> createRating({required int score, String? comment}) async {
-    // ③-1 가입 전이면 요청하지 않는다
-    final id = memberId;
-    if (id == null) {
-      submitStatus = SubmitStatus.error;
-      submitMessage = '먼저 회원가입을 완료해 주세요.';
-      notifyListeners();
-      return;
-    }
-
-    // ③-2 중복 제출 방지 + 제출 중 알림
-    if (submitStatus == SubmitStatus.submitting) return;
+    if (submitStatus == SubmitStatus.submitting) return; // 중복 제출 방지
+    final version = _auth.sessionVersion; // 요청 시점 세션 번호
     submitStatus = SubmitStatus.submitting;
     submitMessage = null;
-    notifyListeners();
+    _notify();
 
     try {
-      // ③-3 서버 등록: 경로는 세션 memberId, body의 movieId는 TMDB 영화 id
-      await _ratingService.createRating(
-        memberId: id,
-        request: CreateRatingRequest(
-          movieId: movie.id,
-          score: score,
-          comment: comment,
-        ),
+      final rating = await _ratingService.createRating(
+        CreateRatingRequest(movieId: movie.id, score: score, comment: comment),
       );
-      if (_disposed) return;
+      // 화면이 닫혔어도 서버엔 저장됐으므로 보관소에는 반영한다 (세션 확인은 add 안에서)
+      _sessionRatings.add(
+        RatingWithMovie(rating: rating, movie: movie),
+        version,
+      );
+      if (_disposed || version != _auth.sessionVersion) return;
       submitStatus = SubmitStatus.success;
-    } on DioException catch (error) {
-      // ③-4 서버 실패 (400 별점 범위 / 404 유저 없음 / 409 중복 등록)
-      if (_disposed) return;
+    } catch (error) {
+      if (_disposed || version != _auth.sessionVersion) return;
       submitStatus = SubmitStatus.error;
-      submitMessage = writeErrorMessage(error);
-    } on StateError catch (error) {
-      // ③-5 201이 아닌 성공 응답 (계약과 다름)
-      if (_disposed) return;
-      submitStatus = SubmitStatus.error;
-      submitMessage = error.message;
+      submitMessage = ratingFailureMessage(error);
+      // 401만 세션 정리. 403·409·400·네트워크는 안내만 하고 로그인 유지
+      if (ratingFailureOf(error) == RatingFailure.sessionExpired) {
+        await _auth.expireSession(version);
+      }
     }
 
-    // ③-6 결과 알림
+    _notify();
+  }
+
+  void _notify() {
     if (!_disposed) notifyListeners();
   }
 
-  // ── ④ 정리 ──
   @override
   void dispose() {
     _disposed = true;

@@ -7,9 +7,7 @@ import '../../widgets/movielog_button.dart';
 import '../movie_detail/widgets/rating_dialog.dart';
 import '../../view_models/my_ratings_view_model.dart';
 import 'widgets/my_ratings_empty.dart';
-import 'widgets/my_ratings_error.dart';
 import 'widgets/my_ratings_list.dart';
-import 'widgets/my_ratings_loading.dart';
 
 class MyRatingsScreen extends StatelessWidget {
   const MyRatingsScreen({super.key});
@@ -29,21 +27,15 @@ class MyRatingsScreen extends StatelessWidget {
       ),
       body: Consumer<MyRatingsViewModel>(
         builder: (context, viewModel, child) {
-          return switch (viewModel.status) {
-            MyRatingsLoadStatus.idle ||
-            MyRatingsLoadStatus.loading => const MyRatingsLoading(),
-            MyRatingsLoadStatus.empty => const MyRatingsEmpty(),
-            MyRatingsLoadStatus.error => MyRatingsError(
-              message: viewModel.refreshWarning ?? viewModel.message,
-              onRetry: viewModel.load,
-            ),
-            MyRatingsLoadStatus.success => MyRatingsList(
-              entries: viewModel.ratings,
-              notice: viewModel.message,
-              onEdit: (rating) => onEditPressed(context, rating),
-              onDelete: (rating) => onDeletePressed(context, rating),
-            ),
-          };
+          final entries = viewModel.ratings;
+          if (entries.isEmpty) return const MyRatingsEmpty();
+          return MyRatingsList(
+            entries: entries,
+            // 토큰 기반 "내 평점 전체 GET"이 없는 v7 계약 한계를 화면에서 알린다.
+            notice: '이번 로그인에서 등록한 평점만 표시돼요.',
+            onEdit: (rating) => onEditPressed(context, rating),
+            onDelete: (rating) => onDeletePressed(context, rating),
+          );
         },
       ),
     );

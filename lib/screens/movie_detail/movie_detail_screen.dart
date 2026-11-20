@@ -7,6 +7,7 @@ import '../../view_models/movie_detail_view_model.dart';
 import '../../view_models/submit_status.dart';
 import '../../widgets/tmdb_poster_image.dart';
 import 'widgets/rating_dialog.dart';
+import '../../view_models/session_ratings.dart';
 
 // 영화 상세 화면. 「평점 남기기」를 누르면 Dialog를 열고 결과를 화면에 반영
 
@@ -25,7 +26,6 @@ class MovieDetailScreen extends StatefulWidget {
 
 class _MovieDetailScreenState extends State<MovieDetailScreen> {
   bool _isFavorite = false;
-  double? _myRating; // 아직 평점을 남기지 않았으면 null
 
   // ── Snackbar ──
   void _showSnackBar(String message) {
@@ -47,7 +47,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   Future<void> _openRatingDialog() async {
     // ① 이 화면의 ViewModel (Dialog를 열기 전에 꺼내 둔다)
     final viewModel = context.read<MovieDetailViewModel>();
-    int? savedScore;
+
     String? failedMessage; // 이번 Dialog에서 마지막으로 실패한 이유 (성공하면 지움)
 
     // ② Dialog: 확인 시 onSubmit 안에서 서버 등록 → 실패면 예외로 Dialog에 알림
@@ -63,7 +63,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
             throw StateError(reason);
           }
           failedMessage = null;
-          savedScore = score;
         },
       ),
     );
@@ -77,8 +76,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     }
 
     // ④ 내 평점 표시 + 성공 Snackbar
-    final score = savedScore;
-    if (score != null) setState(() => _myRating = score.toDouble());
     _showSnackBar('평점을 등록했습니다. 마이페이지의 "내가 등록한 평점"에서 확인할 수 있습니다.');
   }
 
@@ -100,11 +97,14 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   @override
   Widget build(BuildContext context) {
     // Loader가 준비한 영화와 학습용 회원 번호를 ViewModel에서 읽는다.
-    final viewModel = context.read<MovieDetailViewModel>();
-    final movie = viewModel.movie;
-    final canRate = viewModel.memberId != null; // 가입 전이면 평점 버튼 비활성
-
-    final myRating = _myRating;
+    final movie = context.read<MovieDetailViewModel>().movie;
+    // 이번 세션에서 이 영화에 남긴 별점만 구독한다. 수정·삭제도 바로 반영된다.
+    final myScore = context.select<SessionRatings, int?>(
+      (ratings) => ratings.findByMovieId(movie.id)?.rating.score,
+    );
+    final myRating = myScore?.toDouble();
+    // 이미 남겼으면 등록 버튼 비활성 (서버도 RATING409_1로 막는다)
+    final canRate = myScore == null;
 
     return Scaffold(
       appBar: AppBar(
