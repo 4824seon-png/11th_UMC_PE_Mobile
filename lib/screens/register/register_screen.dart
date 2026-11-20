@@ -91,10 +91,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final memberId = viewModel.createdMemberId;
     if (viewModel.submitStatus == SubmitStatus.success && memberId != null) {
       context.read<LearningMemberSession>().setMemberId(memberId);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('회원가입 완료 · 학습용 memberId: $memberId')),
-      );
-      context.go('/movies');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('회원가입이 완료됐어요. 로그인해 주세요.')));
+      context.go('/login');
       return;
     }
 

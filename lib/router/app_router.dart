@@ -11,7 +11,7 @@ import '../screens/movie_detail/movie_detail_loader.dart';
 import '../screens/movie_list/movie_list_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/register/register_screen.dart';
-import '../screens/start/start_screen.dart';
+import '../screens/splash/splash_screen.dart';
 import '../view_models/movie_home_view_model.dart';
 import '../view_models/movie_list_view_model.dart';
 import '../data/services/sign_up_service.dart';
@@ -20,6 +20,27 @@ import '../data/services/rating_api_service.dart';
 import '../screens/my_ratings/my_ratings_screen.dart';
 import '../view_models/my_ratings_view_model.dart';
 import '../view_models/learning_member_session.dart';
+import '../screens/login/login_screen.dart';
+import '../view_models/auth_view_model.dart';
+
+/// 인증 상태와 현재 경로로 이동할 곳을 결정한다. null = 그대로 둔다.
+/// 상태만 읽는 동기 함수. 여기서 API를 호출하지 않는다.
+String? authRedirect(AuthStatus status, String location) {
+  const publicPaths = {'/login', '/register'};
+  final atStart = location == '/start';
+  final atPublic = publicPaths.contains(location);
+
+  return switch (status) {
+    // 토큰 확인 중 또는 확인 실패(재시도): 스플래시 유지
+    AuthStatus.initializing ||
+    AuthStatus.retryRequired => atStart ? null : '/start',
+    // 로그아웃 또는 로그인 요청 중: 공개 화면만 허용
+    AuthStatus.signedOut ||
+    AuthStatus.authenticating => atPublic ? null : '/login',
+    // 로그인됨: 스플래시·로그인·회원가입은 홈으로
+    AuthStatus.signedIn => (atStart || atPublic) ? '/home' : null,
+  };
+}
 
 /// 앱의 모든 경로(URL)와 화면의 연결을 한 곳에서 관리한다.
 class AppRouter {
@@ -27,15 +48,29 @@ class AppRouter {
   AppRouter._();
   static final rootNavigatorKey = GlobalKey<NavigatorState>();
 
-  // static final: 처음 접근할 때 한 번만 생성된다.
-  // build 안에서 만들면 rebuild마다 새 라우터가 생겨 현재 위치가 초기화된다.
-  static final router = GoRouter(
-    // 앱 첫 화면. MaterialApp.home 대신 여기서 결정한다.
+  // 인스턴스를 받아야 refreshListenable에 연결할 수 있으므로 static final → 함수.
+  // 호출은 _MovieLogRouterAppState.initState에서 한 번만 한다.
+  static GoRouter createRouter(AuthViewModel authViewModel) => GoRouter(
     initialLocation: '/start',
     navigatorKey: rootNavigatorKey,
+    refreshListenable: authViewModel, // 인증 상태가 바뀌면 redirect 재실행
+    redirect: (context, state) =>
+        authRedirect(authViewModel.status, state.uri.path),
     routes: [
       // ── ShellRoute 밖: NavigationBar가 없는 화면 ──
-      GoRoute(path: '/start', builder: (context, state) => const StartScreen()),
+      GoRoute(
+        path: '/start', // 스플래시: 세션 확인 중 / 실패 시 재시도
+        builder: (context, state) {
+          final auth = context.watch<AuthViewModel>();
+          return SplashScreen(
+            message: auth.message,
+            onRetry: auth.status == AuthStatus.retryRequired
+                ? auth.restoreSession
+                : null,
+          );
+        },
+      ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/register',
         builder: (context, state) => ChangeNotifierProvider(
