@@ -18,7 +18,7 @@ class SignUpService {
 
   Future<bool> checkNickname(String nickname) async {
     final encoded = Uri.encodeComponent(nickname.trim());
-    final response = await _dio.get('/v7/members/nickname/$encoded');
+    final response = await _dio.get('/v8/members/nickname/$encoded');
     // 경로만 적는 이유 : 서버 주소를 Dio의 baseUrl에 한 번만 설정
     // Dio가 요청할 때 둘을 합친다. (baseUrl + path)
     // 주소가 바뀌어도 Client 한 곳만 수정
@@ -32,7 +32,7 @@ class SignUpService {
   Future<bool> checkEmail(String email) async {
     // 호출하는 쪽에 필요한 것은 사용 가능 여부 하나이므로 .available만 꺼내 돌려준다.
     final encoded = Uri.encodeComponent(email.trim());
-    final response = await _dio.get('/v7/members/email/$encoded');
+    final response = await _dio.get('/v8/members/email/$encoded');
     return CheckResult.fromJson(response.data as Map<String, dynamic>)
         .available;
   }
@@ -43,7 +43,7 @@ class SignUpService {
   ) async {
     // ①-1 요청 보내기: path + body
     // get과 달리 post는 body를 가질 수 있고, 그 자리가 data
-    final response = await _dio.post('/v7/members', data: request.toJson());
+    final response = await _dio.post('/v8/members', data: request.toJson());
 
     // ①-2 응답 열기: 봉투는 CommonResponse가, 내용물은 SignUpResult가 해석
     return CommonResponse<SignUpResult>.fromJson(

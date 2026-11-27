@@ -8,15 +8,29 @@ class AuthInterceptor extends Interceptor {
   AuthInterceptor(this._storage);
   final TokenStorage _storage;
 
-  // 보호 대상: 워크북 서버의 /v7/members/me, /v7/ratings, /v7/ratings/{id}
-  // 공개 조회 /v7/members/{memberId}/ratings는 여기에 해당하지 않는다.
+  // ── ① 이 요청이 JWT를 붙일 보호 요청인지 판정 ──
   bool _isProtected(RequestOptions options) {
-    final uri = options.uri;
-    final path = uri.path;
-    return uri.host == 'workbook.devnoco.com' &&
-        (path == '/v7/members/me' ||
-            path == '/v7/ratings' ||
-            path.startsWith('/v7/ratings/'));
+    // ── ② 다른 호스트(TMDB 등)에는 절대 JWT를 붙이지 않음 ──
+    if (options.uri.host != 'workbook.devnoco.com') return false;
+    final path = options.uri.path;
+    final method = options.method.toUpperCase();
+
+    // ── ③ 8주차 보호 경로를 v8로 ──
+    final w8Protected =
+        path == '/v8/members/me' ||
+        path == '/v8/ratings' ||
+        path.startsWith('/v8/ratings/');
+
+    // ── ④ 즐겨찾기: 경로와 메서드를 함께 확인 ──
+    final favorites =
+        (path == '/v8/favorites' && (method == 'GET' || method == 'POST')) ||
+        (RegExp(r'^/v8/favorites/[1-9]\d*$').hasMatch(path) &&
+            (method == 'GET' || method == 'DELETE'));
+
+    // ── ⑤ 영화 기록 저장 (Challenge 전용) ──
+    final movieRecord = path == '/v8/movie-records' && method == 'POST';
+
+    return w8Protected || favorites || movieRecord;
   }
 
   @override
