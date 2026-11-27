@@ -38,13 +38,13 @@ class RatingApiService {
 
   /// [공개] 유저별 평점 조회. v7 로그인에는 memberId가 없어 이번 주 화면에서는 쓰지 않는다.
   Future<List<RatingDto>> fetchMemberRatings(int memberId) async {
-    final response = await _publicDio.get('/v7/members/$memberId/ratings');
+    final response = await _publicDio.get('/v8/members/$memberId/ratings');
     return parseRatingList(response.data);
   }
 
   /// [보호] 등록. body에 memberId 없음 — 서버가 토큰으로 작성자를 정한다.
   Future<RatingDto> createRating(CreateRatingRequest request) async {
-    final response = await _authDio.post('/v7/ratings', data: request.toJson());
+    final response = await _authDio.post('/v8/ratings', data: request.toJson());
     return parseRatingResult(response.data);
   }
 
@@ -56,7 +56,7 @@ class RatingApiService {
     String? comment,
   }) async {
     final response = await _authDio.patch(
-      '/v7/ratings/$ratingId',
+      '/v8/ratings/$ratingId',
       data: {'score': score, 'comment': comment},
     );
     return parseRatingResult(response.data);
@@ -64,7 +64,7 @@ class RatingApiService {
 
   /// [보호] 삭제. v7 성공은 204가 아니라 200 + result null.
   Future<void> deleteRating(int ratingId) async {
-    final response = await _authDio.delete('/v7/ratings/$ratingId');
+    final response = await _authDio.delete('/v8/ratings/$ratingId');
     if (response.statusCode != 200) {
       throw StateError('예상하지 못한 삭제 응답: ${response.statusCode}');
     }

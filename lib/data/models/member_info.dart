@@ -1,6 +1,6 @@
 import 'common_response.dart';
 
-/// GET·PATCH /v7/members/me 의 result. 내 정보는 이메일·닉네임·가입일뿐이다.
+/// GET·PATCH /v8/members/me 의 result. 내 정보는 이메일·닉네임·가입일뿐이다.
 class MemberInfo {
   const MemberInfo({
     required this.email,

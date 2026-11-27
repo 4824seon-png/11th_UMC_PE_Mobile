@@ -1,4 +1,4 @@
-/// POST /v7/auth/login 요청 body.
+/// POST /v8/auth/login 요청 body.
 /// 비밀번호는 이 객체로 서버에 보내기만 하고 저장·출력하지 않는다.
 class LoginRequest {
   const LoginRequest({required this.email, required this.password});
