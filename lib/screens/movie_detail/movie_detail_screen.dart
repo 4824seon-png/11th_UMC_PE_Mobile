@@ -8,6 +8,8 @@ import '../../view_models/submit_status.dart';
 import '../../widgets/tmdb_poster_image.dart';
 import 'widgets/rating_dialog.dart';
 import '../../view_models/session_ratings.dart';
+import '../../view_models/favorite_detail_view_model.dart';
+import '../../widgets/favorite_button.dart';
 
 // 영화 상세 화면. 「평점 남기기」를 누르면 Dialog를 열고 결과를 화면에 반영
 
@@ -25,7 +27,14 @@ class MovieDetailScreen extends StatefulWidget {
 }
 
 class _MovieDetailScreenState extends State<MovieDetailScreen> {
-  bool _isFavorite = false;
+  // ── ① 첫 frame 뒤 서버 즐겨찾기 여부 1회 조회 ──
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<FavoriteDetailViewModel>().load();
+    });
+  }
 
   // ── Snackbar ──
   void _showSnackBar(String message) {
@@ -35,12 +44,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     messenger.showSnackBar(
       SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
-  }
-
-  // ── 즐겨찾기 ──
-  void _toggleFavorite() {
-    setState(() => _isFavorite = !_isFavorite);
-    _showSnackBar(_isFavorite ? '즐겨찾기에 추가했어요.' : '즐겨찾기에서 삭제했어요.');
   }
 
   // ── 평점 남기기 (Dialog → 서버 등록) ──
@@ -128,7 +131,16 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
             ),
             Padding(
               padding: const EdgeInsets.all(16),
-              child: _MovieInfo(movie: movie, myRating: myRating),
+              // ── ② 제목·정보는 남은 너비, 오른쪽에 북마크 ──
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _MovieInfo(movie: movie, myRating: myRating),
+                  ),
+                  const FavoriteButton(),
+                ],
+              ),
             ),
             const Divider(height: 1),
             Padding(
@@ -140,9 +152,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
       ),
       // bottomNavigationBar = "하단 고정 영역". 본문 스크롤과 관계없이 버튼이 항상 보인다.
       bottomNavigationBar: _DetailActions(
-        isFavorite: _isFavorite,
         myRating: myRating,
-        onFavoritePressed: _toggleFavorite,
         onRatingPressed: canRate ? _openRatingDialog : null,
       ),
     );
@@ -277,20 +287,15 @@ class _Synopsis extends StatelessWidget {
   }
 }
 
-/// 하단 고정 버튼: 즐겨찾기 / 평점 남기기.
-/// 상태(isFavorite, myRating)는 부모가 가지고, 이 위젯은 표시와 탭 알림만 담당한다.
+/// 하단 고정 버튼: 평점 남기기. (즐겨찾기는 제목 옆 FavoriteButton으로 이동)
 class _DetailActions extends StatelessWidget {
   const _DetailActions({
-    required this.isFavorite,
     required this.myRating,
-    required this.onFavoritePressed,
     required this.onRatingPressed,
   });
 
-  final bool isFavorite;
   final double? myRating;
-  final VoidCallback onFavoritePressed;
-  final VoidCallback? onRatingPressed; // null이면 비활성 (가입 전)
+  final VoidCallback? onRatingPressed; // null이면 비활성 (이미 평점을 남김)
 
   @override
   Widget build(BuildContext context) {
@@ -301,36 +306,17 @@ class _DetailActions extends StatelessWidget {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        child: Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: onFavoritePressed,
-                icon: Icon(isFavorite ? Icons.bookmark : Icons.bookmark_border),
-                label: const Text('즐겨찾기'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(52),
-                  side: BorderSide(color: colors.primary),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: onRatingPressed,
-                icon: const Icon(Icons.rate_review_outlined),
-                // 내 별점은 SessionRatings에서 읽는다.
-                // 로그인 사용자만 들어올 수 있으므로 "회원가입 후" 분기는 없다.
-                // 이번 세션에 남겼으면 비활성 + 내 별점 표시
-                label: Text(myRating == null ? '평점 남기기' : '내 평점 $myRating'),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(52),
-                  backgroundColor: colors.primary,
-                  foregroundColor: colors.onPrimary,
-                ),
-              ),
-            ),
-          ],
+        // ── ③ Row가 사라졌으므로 버튼이 전체 너비 사용 ──
+        child: ElevatedButton.icon(
+          onPressed: onRatingPressed,
+          icon: const Icon(Icons.rate_review_outlined),
+          // 내 별점은 SessionRatings에서 읽는다. 이번 세션에 남겼으면 비활성 + 내 별점 표시
+          label: Text(myRating == null ? '평점 남기기' : '내 평점 $myRating'),
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size.fromHeight(52),
+            backgroundColor: colors.primary,
+            foregroundColor: colors.onPrimary,
+          ),
         ),
       ),
     );

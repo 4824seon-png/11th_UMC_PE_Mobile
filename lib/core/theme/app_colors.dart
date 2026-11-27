@@ -44,4 +44,8 @@ class AppColors {
   static const Color inputDisabledFill = Color(
     0xFFEFEDF2,
   ); // 읽기 전용 입력창 배경 (프로필 이메일)
+
+  // ── 9주차 Figma (즐겨찾기 카드·북마크 버튼·마이페이지 행) ──
+  static const Color cardFill = Color(0xFFFEFCF9); // 즐겨찾기 카드·북마크 박스 배경
+  static const Color favoritePlaceholder = Color(0xFFEEE8F3); // 영화 정보 실패 포스터 자리
 }

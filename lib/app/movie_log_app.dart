@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 
 import '../core/network/movie_log_client.dart';
 import '../core/network/tmdb_client.dart';
+import '../core/session/auth_session_bridge.dart';
+import '../core/session/session_guard.dart';
 import '../core/theme/app_theme.dart';
 import '../data/services/auth_api_service.dart';
 import '../data/services/member_api_service.dart';
@@ -15,6 +17,7 @@ import '../data/storage/token_storage.dart';
 import '../router/app_router.dart';
 import '../view_models/auth_view_model.dart';
 import '../view_models/session_ratings.dart';
+import '../data/services/favorite_api_service.dart';
 
 /// 앱의 최상단 위젯. 앱 전역 의존성을 등록한다.
 /// 객체는 build()가 아니라 Provider의 create에서 만든다 → rebuild돼도 한 번만 생성된다.
@@ -54,6 +57,12 @@ class MovieLogApp extends StatelessWidget {
             createAuthMovieLogClient(context.read<TokenStorage>()),
           ),
         ),
+        // ── ① 즐겨찾기 Service: 보호 Client 주입 ──
+        Provider<FavoriteApiService>(
+          create: (context) => FavoriteApiService(
+            createAuthMovieLogClient(context.read<TokenStorage>()),
+          ),
+        ),
         // Service를 주입받는 앱 전역 인증 상태
         ChangeNotifierProvider<AuthViewModel>(
           create: (context) => AuthViewModel(
@@ -66,6 +75,26 @@ class MovieLogApp extends StatelessWidget {
         // 이번 세션 평점 보관소. AuthViewModel의 세션 변경을 구독해 스스로 비운다.
         ChangeNotifierProvider<SessionRatings>(
           create: (context) => SessionRatings(context.read<AuthViewModel>()),
+        ),
+
+        // ── ② AuthViewModel '아래'에 둬야 read할 수 있음 ──
+        Provider<AuthSessionBridge>(
+          create: (context) {
+            final auth = context.read<AuthViewModel>();
+            return AuthSessionBridge(
+              authSignals: auth,
+              sessionVersion: () => auth.sessionVersion,
+              // signedIn이고 내 정보까지 확인된 뒤에만 email
+              verifiedEmail: () => auth.status == AuthStatus.signedIn
+                  ? auth.member?.email
+                  : null,
+            );
+          },
+          dispose: (_, bridge) => bridge.dispose(),
+        ),
+        // ── ③ 화면·ViewModel이 읽을 SessionGuard ──
+        Provider<SessionGuard>(
+          create: (context) => context.read<AuthSessionBridge>().guard,
         ),
       ],
       child: const _MovieLogRouterApp(),

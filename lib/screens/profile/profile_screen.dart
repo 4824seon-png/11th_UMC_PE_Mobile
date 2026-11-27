@@ -34,6 +34,8 @@ class ProfileScreen extends StatelessWidget {
             ProfileStats(),
             SizedBox(height: 26),
             MyRatingsEntry(),
+            SizedBox(height: 8), // Figma: 평점 행 아래 8
+            MyFavoritesEntry(),
             SizedBox(height: 28),
             FavoriteGenres(),
           ],
@@ -198,6 +200,55 @@ class MyRatingsEntry extends StatelessWidget {
                   ),
                 ),
                 Icon(Icons.chevron_right, size: 28, color: AppColors.primary),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── ① 내 즐겨찾기 진입 행: 내 정보가 준비된 뒤에만 활성 ──
+class MyFavoritesEntry extends StatelessWidget {
+  const MyFavoritesEntry({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // ── ② member 존재 여부만 구독 ──
+    final hasMember = context.select<AuthViewModel, bool>(
+      (auth) => auth.member != null,
+    );
+
+    // Figma 3594-132: 358×54, 배경 #FEFCF9, 테두리 1px #D9D3E1 (평점 행과 다름)
+    return Material(
+      color: AppColors.cardFill,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.cardBorder),
+      ),
+      child: InkWell(
+        customBorder: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        onTap: hasMember ? () => context.push('/my/favorites') : null,
+        child: const SizedBox(
+          height: 54,
+          child: Padding(
+            padding: EdgeInsets.only(left: 16, right: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '내 즐겨찾기',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.labelText,
+                    ),
+                  ),
+                ),
+                Icon(Icons.chevron_right, size: 24, color: AppColors.primary),
               ],
             ),
           ),
